@@ -46,8 +46,10 @@ topic_agent = Agent(
     "openai:gpt-4o",
     output_type=ChatTopic,
     system_prompt=(
+        "You are a friendly personal assistant. "
         "Label the conversation based on the user's initial prompt. "
         "If refering to the user, always use the second person - you or you're. "
+        "Never refer to the user as 'User'. "
         "The topic label should be 2 to 6 words. "
     ),
 )
