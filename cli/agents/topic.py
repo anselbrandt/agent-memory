@@ -17,17 +17,14 @@ agent = Agent(
     "openai:gpt-4o",
     output_type=ChatTopic,
     system_prompt=(
-        "Label the chat exchange with a descriptive topic "
+        "Label the conversation based on the user's initial prompt. "
         "If refering to the user, always use the second person - you or you're. "
         "The topic label should be 2 to 6 words. "
     ),
 )
 
 result = agent.run_sync(
-    [
-        "Can you tell me about some famous people with the same name as me? "
-        "Of course! However, I would need to know your name to provide information about famous people who share it. Could you please tell me your name?"
-    ]
+    ["Can you tell me about some famous people with the same name as me?"]
 )
-print(result.output)
 print(result.usage())
+print(result.output.topic)
