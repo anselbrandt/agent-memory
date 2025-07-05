@@ -36,7 +36,21 @@ load_dotenv()
 logfire.configure(send_to_logfire="if-token-present")
 logfire.instrument_pydantic_ai()
 
-agent = Agent("openai:gpt-4o")
+
+class ChatTopic(BaseModel):
+    topic: str
+
+
+chat_agent = Agent("openai:gpt-4o")
+topic_agent = Agent(
+    "openai:gpt-4o",
+    output_type=ChatTopic,
+    system_prompt=(
+        "Label the conversation based on the user's initial prompt. "
+        "If refering to the user, always use the second person - you or you're. "
+        "The topic label should be 2 to 6 words. "
+    ),
+)
 THIS_DIR = Path(__file__).parent
 
 # Mock user configuration
@@ -172,15 +186,17 @@ async def post_chat(
         # Lazily create the conversation if it doesn't exist
         exists = await database.conversation_exists(conversation_id)
         if not exists:
+            topic_result = await topic_agent.run([prompt])
+            topic = topic_result.output.topic
             await database.create_conversation_with_id(
-                conversation_id, MOCK_USER_ID, "New Chat"
+                conversation_id, MOCK_USER_ID, topic
             )
 
         # fetch conversation history
         messages = await database.get_conversation_messages(conversation_id)
 
         # run the agent and stream output
-        async with agent.run_stream(prompt, message_history=messages) as result:
+        async with chat_agent.run_stream(prompt, message_history=messages) as result:
             async for text in result.stream(debounce_by=0.01):
                 m = ModelResponse(parts=[TextPart(text)], timestamp=result.timestamp())
                 yield json.dumps(to_chat_message(m)).encode("utf-8") + b"\n"
