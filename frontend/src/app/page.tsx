@@ -1,21 +1,11 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { marked } from "marked";
 import Sidebar from "@/components/Sidebar";
-import UpArrow from "@/icons/UpArrow";
-
-marked.setOptions({
-  breaks: true,
-});
-
-marked.use({
-  renderer: {
-    link({ href, title, text }) {
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-medium transition-colors duration-150">${text}</a>`;
-    },
-  },
-});
+import Header from "@/components/Header";
+import Messages from "@/components/Messages";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import InputForm from "@/components/InputForm";
 
 interface Message {
   role: string;
@@ -317,96 +307,16 @@ export default function ChatPage() {
         onSelectConversation={loadConversation}
       />
       <div className="flex-1 flex flex-col h-screen">
-        {/* Header - Fixed */}
-        <div className="px-10 py-6 flex-shrink-0 bg-white border-b border-gray-200">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold font-serif text-gray-700">
-              {user ? `Hey there, ${user.username}.` : "Hey there."}
-            </h1>
-          </div>
-        </div>
-
-        {/* Messages Container - Scrollable */}
-        <div className="flex-1 overflow-hidden">
-          <div
-            id="conversation"
-            className="h-full overflow-y-auto px-4 py-6 space-y-4"
-            ref={convRef}
-          >
-            <div className="max-w-4xl mx-auto space-y-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.timestamp}
-                  id={`msg-${msg.timestamp}`}
-                  title={`${msg.role} at ${msg.timestamp}`}
-                  className={`flex ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-3xl px-4 py-3 rounded-2xl ${
-                      msg.role === "user"
-                        ? "bg-gray-200 text-gray-600 shadow-sm border border-gray-300 shadow-sm"
-                        : "bg-white text-gray-900 border border-gray-200 shadow-sm"
-                    }`}
-                  >
-                    <div
-                      className="prose prose-sm max-w-none prose-gray"
-                      dangerouslySetInnerHTML={{
-                        __html: marked.parse(msg.content),
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Loading Spinner - Fixed */}
-        {loading && (
-          <div className="flex justify-center py-4 flex-shrink-0 bg-white border-t border-gray-200">
-            <div className="flex items-center gap-2 text-gray-600">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-              <span className="text-sm">AI is thinking...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Input Form - Fixed */}
-        <div className="border-t border-gray-200 p-6 flex-shrink-0 bg-white">
-          <div className="max-w-4xl mx-auto">
-            <form onSubmit={onSubmit}>
-              <div className="flex gap-3">
-                <input
-                  id="prompt-input"
-                  name="prompt"
-                  type="text"
-                  className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
-                  placeholder="How can I help you today?"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  autoFocus
-                />
-                <button
-                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 bg-gray-400 text-white hover:bg-gray-700 transform hover:scale-105 active:scale-95`}
-                  type="submit"
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  ) : (
-                    <div className="hover:cursor-pointer transition-transform duration-100 hover:scale-150">
-                      <UpArrow />
-                    </div>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Header user={user} />
+        <Messages messages={messages} convRef={convRef} />
+        <LoadingSpinner loading={loading} />
+        <InputForm
+          onSubmit={onSubmit}
+          prompt={prompt}
+          setPrompt={setPrompt}
+          onKeyDown={onKeyDown}
+          loading={loading}
+        />
       </div>
     </div>
   );
