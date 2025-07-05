@@ -10,6 +10,7 @@ dependencies = [
     "logfire[fastapi,sqlite3]>=3.22.0",
     "pydantic-ai[logfire]>=0.3.5",
     "python-dotenv>=1.1.1",
+    "tavily-python>=0.7.9",
 ]
 
 [dependency-groups]

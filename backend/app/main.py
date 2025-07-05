@@ -1,21 +1,17 @@
 from __future__ import annotations as _annotations
 
-import json
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Annotated, Literal, Optional, List
+import json
 import uuid
 
-import fastapi
-import logfire
+from dotenv import load_dotenv
 from fastapi import Depends, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
-from typing_extensions import TypedDict
 from pydantic import BaseModel
-
-from pydantic_ai import Agent
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     ModelMessage,
@@ -24,8 +20,11 @@ from pydantic_ai.messages import (
     TextPart,
     UserPromptPart,
 )
-from dotenv import load_dotenv
+from typing_extensions import TypedDict
+import fastapi
+import logfire
 
+from app.agents import chat_agent, topic_agent, ChatDependencies
 from app.config import Settings
 from app.db import Database, User
 
@@ -37,22 +36,6 @@ logfire.configure(send_to_logfire="if-token-present")
 logfire.instrument_pydantic_ai()
 
 
-class ChatTopic(BaseModel):
-    topic: str
-
-
-chat_agent = Agent("openai:gpt-4o")
-topic_agent = Agent(
-    "openai:gpt-4o",
-    output_type=ChatTopic,
-    system_prompt=(
-        "You are a friendly personal assistant. "
-        "Label the conversation based on the user's initial prompt. "
-        "If refering to the user, always use the second person - you or you're. "
-        "Never refer to the user as 'User'. "
-        "The topic label should be 2 to 6 words. "
-    ),
-)
 THIS_DIR = Path(__file__).parent
 
 # Mock user configuration
@@ -119,24 +102,27 @@ class ConversationsResponse(BaseModel):
     conversations: List[ConversationInfo]
 
 
-def to_chat_message(m: ModelMessage) -> ChatMessage:
-    first_part = m.parts[0]
+def to_chat_message(m: ModelMessage) -> Optional[ChatMessage]:
     if isinstance(m, ModelRequest):
-        if isinstance(first_part, UserPromptPart):
-            assert isinstance(first_part.content, str)
-            return {
-                "role": "user",
-                "timestamp": first_part.timestamp.isoformat(),
-                "content": first_part.content,
-            }
+        for part in m.parts:
+            if isinstance(part, UserPromptPart):
+                return {
+                    "role": "user",
+                    "timestamp": part.timestamp.isoformat(),
+                    "content": part.content,
+                }
+
     elif isinstance(m, ModelResponse):
-        if isinstance(first_part, TextPart):
-            return {
-                "role": "model",
-                "timestamp": m.timestamp.isoformat(),
-                "content": first_part.content,
-            }
-    raise UnexpectedModelBehavior(f"Unexpected message type for chat app: {m}")
+        for part in m.parts:
+            if isinstance(part, TextPart):
+                return {
+                    "role": "model",
+                    "timestamp": m.timestamp.isoformat(),
+                    "content": part.content,
+                }
+
+    # Ignore system prompts, tool calls, etc.
+    return None
 
 
 @app.post("/chat/new-conversation", response_model=NewConversationResponse)
@@ -163,10 +149,12 @@ async def get_chat(
 ) -> Response:
     """Get messages from a specific conversation."""
     msgs = await database.get_conversation_messages(conversation_id)
-    return Response(
-        b"\n".join(json.dumps(to_chat_message(m)).encode("utf-8") for m in msgs),
-        media_type="text/plain",
-    )
+    lines = [
+        json.dumps(chat_msg).encode("utf-8")
+        for m in msgs
+        if (chat_msg := to_chat_message(m)) is not None
+    ]
+    return Response(b"\n".join(lines), media_type="text/plain")
 
 
 @app.post("/chat/{conversation_id}")
@@ -198,7 +186,12 @@ async def post_chat(
         messages = await database.get_conversation_messages(conversation_id)
 
         # run the agent and stream output
-        async with chat_agent.run_stream(prompt, message_history=messages) as result:
+        current_date = date.today()
+        date_string = current_date.strftime("%Y-%m-%d")
+        deps = ChatDependencies(todays_date=date_string)
+        async with chat_agent.run_stream(
+            prompt, message_history=messages, deps=deps
+        ) as result:
             async for text in result.stream(debounce_by=0.01):
                 m = ModelResponse(parts=[TextPart(text)], timestamp=result.timestamp())
                 yield json.dumps(to_chat_message(m)).encode("utf-8") + b"\n"

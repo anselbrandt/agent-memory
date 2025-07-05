@@ -5,6 +5,18 @@ import { marked } from "marked";
 import Sidebar from "@/components/Sidebar";
 import UpArrow from "@/icons/UpArrow";
 
+marked.setOptions({
+  breaks: true,
+});
+
+marked.use({
+  renderer: {
+    link({ href, title, text }) {
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-medium transition-colors duration-150">${text}</a>`;
+    },
+  },
+});
+
 interface Message {
   role: string;
   content: string;

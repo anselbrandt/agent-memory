@@ -7,6 +7,7 @@ from pydantic_settings import (
 
 class Settings(BaseSettings):
     OPENAI_API_KEY: str
+    TAVILY_API_KEY: str
 
     model_config = SettingsConfigDict(
         case_sensitive=False, env_file=".env", env_file_encoding="utf-8"
