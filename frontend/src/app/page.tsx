@@ -22,7 +22,6 @@ interface Conversation {
   message_count: number;
 }
 
-
 export default function ChatPage() {
   const { refreshAuth } = useAuth();
   const [prompt, setPrompt] = useState("");
@@ -37,18 +36,20 @@ export default function ChatPage() {
   // Handle session_id from OAuth callback
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-    
+    const sessionId = urlParams.get("session_id");
+
     if (sessionId) {
       // Set the session cookie on the frontend domain
-      document.cookie = `session_id=${sessionId}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
-      
+      document.cookie = `session_id=${sessionId}; path=/; max-age=${
+        7 * 24 * 60 * 60
+      }; samesite=lax`;
+
       // Clean up the URL by removing the session_id parameter
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      
-      console.log('Session ID set from OAuth callback:', sessionId);
-      
+
+      console.log("Session ID set from OAuth callback:", sessionId);
+
       // Refresh auth status to update the UI
       refreshAuth();
     }
@@ -140,7 +141,6 @@ export default function ChatPage() {
       console.error("Error loading conversation:", error);
     }
   }
-
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

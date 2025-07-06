@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 import asyncpg
 
-from ..models.auth import User
-from ..models.database import UserResponse
+from app.auth_models import User
+from app.db_models import UserResponse
 
 
 class UserService:

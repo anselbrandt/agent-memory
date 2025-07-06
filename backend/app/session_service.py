@@ -5,8 +5,8 @@ import uuid
 
 from pydantic import ValidationError
 
-from ..db import get_redis
-from ..models.auth import SessionData
+from app.db import get_redis
+from app.auth_models import SessionData
 
 
 class SessionService:
@@ -101,9 +101,7 @@ class SessionService:
         # Store session data
         session_key = self._get_session_key(session_id)
         expire_seconds = expires_in_days * 24 * 60 * 60
-        self._set_data(
-            session_key, session_data.model_dump_json(), expire_seconds
-        )
+        self._set_data(session_key, session_data.model_dump_json(), expire_seconds)
 
         return session_id
 
@@ -170,9 +168,7 @@ class SessionService:
         redis_client = self.redis
         session_key = f"{self.session_prefix}{session_id}"
         expire_seconds = expires_in_days * 24 * 60 * 60
-        redis_client.setex(
-            session_key, expire_seconds, json.dumps(session_data)
-        )
+        redis_client.setex(session_key, expire_seconds, json.dumps(session_data))
 
         return True
 

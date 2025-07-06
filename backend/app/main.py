@@ -26,7 +26,8 @@ import logfire
 from app.agents import chat_agent, topic_agent, ChatDependencies
 from app.config import Settings
 from app.db import Database, User
-from app.routes import auth
+from app.auth_routes import auth_router
+from app.auth_service import auth_service
 
 settings = Settings()
 load_dotenv()
@@ -62,7 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
+app.include_router(auth_router)
 
 
 @app.get("/")
@@ -78,7 +79,7 @@ def get_authenticated_user_id(request: Request) -> str:
     """Get the authenticated user ID from session, fallback to mock user"""
     try:
         from app.routes.auth import auth_service
-        
+
         session_id = request.cookies.get("session_id")
         if session_id:
             user_data = auth_service.get_session_user(session_id)
@@ -86,7 +87,7 @@ def get_authenticated_user_id(request: Request) -> str:
                 return user_data.get("id", MOCK_USER_ID)
     except ImportError:
         pass
-    
+
     return MOCK_USER_ID
 
 
@@ -202,9 +203,7 @@ async def post_chat(
         if not exists:
             topic_result = await topic_agent.run([prompt])
             topic = topic_result.output.topic
-            await database.create_conversation_with_id(
-                conversation_id, user_id, topic
-            )
+            await database.create_conversation_with_id(conversation_id, user_id, topic)
 
         # fetch conversation history
         messages = await database.get_conversation_messages(conversation_id)
@@ -235,8 +234,6 @@ async def get_user_profile(
 ) -> User:
     """Get the authenticated user's profile."""
     try:
-        from app.routes.auth import auth_service
-        
         # Get session from cookie
         session_id = request.cookies.get("session_id")
         if session_id:
@@ -245,17 +242,21 @@ async def get_user_profile(
             if user_data:
                 # Create User model from auth data for chat system compatibility
                 # Use the user's first name as username
-                first_name = user_data.get("name", "").split()[0] if user_data.get("name") else "User"
-                
+                first_name = (
+                    user_data.get("name", "").split()[0]
+                    if user_data.get("name")
+                    else "User"
+                )
+
                 return User(
                     id=user_data.get("id", ""),
                     username=first_name,
                     created_at=datetime.now(tz=timezone.utc),
-                    updated_at=datetime.now(tz=timezone.utc)
+                    updated_at=datetime.now(tz=timezone.utc),
                 )
     except ImportError:
         pass
-    
+
     # Fallback to mock user
     user = await database.get_user("9000")
     if user is None:
