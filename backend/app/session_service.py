@@ -7,6 +7,9 @@ from pydantic import ValidationError
 
 from app.db import get_redis
 from app.auth_models import SessionData
+from app.config import Settings
+
+settings = Settings()
 
 
 class SessionService:
@@ -80,9 +83,11 @@ class SessionService:
         return str(uuid.uuid4())
 
     def create_session(
-        self, user_data: Dict[str, Any], expires_in_days: int = 7
+        self, user_data: Dict[str, Any], expires_in_days: int = None
     ) -> str:
         """Create a new session and store it"""
+        if expires_in_days is None:
+            expires_in_days = settings.session_expires_days
         session_id = self.generate_session_id()
         expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
 
@@ -152,8 +157,10 @@ class SessionService:
 
         return deleted_count
 
-    def refresh_session(self, session_id: str, expires_in_days: int = 7) -> bool:
+    def refresh_session(self, session_id: str, expires_in_days: int = None) -> bool:
         """Refresh session expiration"""
+        if expires_in_days is None:
+            expires_in_days = settings.session_expires_days
         session_data = self.get_session(session_id)
         if not session_data:
             return False

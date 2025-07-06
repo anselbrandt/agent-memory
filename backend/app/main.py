@@ -40,8 +40,8 @@ logfire.instrument_pydantic_ai()
 THIS_DIR = Path(__file__).parent
 
 # Mock user configuration
-MOCK_USER_ID = "9000"
-MOCK_USERNAME = "Dave"
+MOCK_USER_ID = settings.mock_user_id
+MOCK_USERNAME = settings.mock_username
 
 
 @asynccontextmanager
@@ -57,7 +57,7 @@ logfire.instrument_fastapi(app)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # or ["*"] for testing
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,7 +68,7 @@ app.include_router(auth_router)
 
 @app.get("/")
 async def root():
-    return {"message": "Visit localhost:3000"}
+    return {"message": f"Visit {settings.frontend_url}"}
 
 
 async def get_db(request: Request) -> Database:
@@ -215,7 +215,7 @@ async def post_chat(
         async with chat_agent.run_stream(
             prompt, message_history=messages, deps=deps
         ) as result:
-            async for text in result.stream(debounce_by=0.01):
+            async for text in result.stream(debounce_by=settings.chat_debounce_delay):
                 m = ModelResponse(parts=[TextPart(text)], timestamp=result.timestamp())
                 yield json.dumps(to_chat_message(m)).encode("utf-8") + b"\n"
 
@@ -258,7 +258,7 @@ async def get_user_profile(
         pass
 
     # Fallback to mock user
-    user = await database.get_user("9000")
+    user = await database.get_user(settings.mock_user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user

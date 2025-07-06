@@ -21,9 +21,9 @@ class AuthService:
         self.google_redirect_uri = f"{self.host}/auth/google/callback"
 
         # Google OAuth URLs
-        self.google_oauth_url = "https://accounts.google.com/o/oauth2/auth"
-        self.google_token_url = "https://accounts.google.com/o/oauth2/token"
-        self.google_user_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+        self.google_oauth_url = settings.google_oauth_url
+        self.google_token_url = settings.google_token_url
+        self.google_user_url = settings.google_user_url
 
         # JWT settings
         self.jwt_secret = settings.jwt_secret_key

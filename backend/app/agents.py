@@ -1,13 +1,17 @@
 from dataclasses import dataclass
 import os
 
-from dotenv import load_dotenv
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.common_tools.tavily import tavily_search_tool
 
-load_dotenv()
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+from app.config import Settings
+
+settings = Settings()
+
+# Set environment variables for pydantic-ai
+if settings.openai_api_key:
+    os.environ["OPENAI_API_KEY"] = settings.openai_api_key
 
 # -------------------------
 # Chat Agent with Tavily Search
@@ -19,10 +23,19 @@ class ChatDependencies:
     todays_date: str
 
 
-chat_agent = Agent(
-    model="openai:gpt-4o",
-    tools=[tavily_search_tool(api_key=TAVILY_API_KEY)],
-)
+def create_chat_agent():
+    """Create chat agent with proper configuration"""
+    tools = []
+    if settings.tavily_api_key:
+        tools.append(tavily_search_tool(api_key=settings.tavily_api_key))
+    
+    return Agent(
+        model=f"openai:{settings.default_model}",
+        tools=tools,
+    )
+
+
+chat_agent = create_chat_agent()
 
 
 @chat_agent.system_prompt
@@ -44,7 +57,7 @@ class ChatTopic(BaseModel):
 
 
 topic_agent = Agent(
-    model="openai:gpt-4o",
+    model=f"openai:{settings.default_model}",
     output_type=ChatTopic,
     system_prompt=(
         "You are a friendly personal assistant.\n"

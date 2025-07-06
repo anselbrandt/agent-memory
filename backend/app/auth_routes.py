@@ -58,7 +58,7 @@ async def google_callback(
             samesite="lax",  # Allows cross-port same-site requests
             domain=None,  # No domain restriction for localhost
             path="/",  # Ensure cookie is sent for all paths
-            max_age=7 * 24 * 60 * 60,  # 7 days
+            max_age=settings.session_expires_days * 24 * 60 * 60,
         )
 
         # Redirect to frontend with session ID as URL parameter (temporary)
@@ -92,7 +92,7 @@ async def login(
             samesite="lax",  # Allows cross-port same-site requests
             domain=None,  # No domain restriction for localhost
             path="/",  # Ensure cookie is sent for all paths
-            max_age=7 * 24 * 60 * 60,
+            max_age=settings.session_expires_days * 24 * 60 * 60,
         )
 
         return AuthResponse(authenticated=True, user=user, message="Login successful")
