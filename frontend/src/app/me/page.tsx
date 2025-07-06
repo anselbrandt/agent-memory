@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
+import BusinessInformation from "@/components/BusinessInformation";
 
 interface BackendUser {
   id: string;
@@ -256,6 +257,11 @@ export default function MePage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Business Information */}
+          <div className="mt-8">
+            <BusinessInformation authenticated={authenticated} />
           </div>
 
           {/* Actions */}

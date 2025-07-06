@@ -28,6 +28,7 @@ from app.config import Settings
 from app.db import Database, User
 from app.auth_routes import auth_router
 from app.auth_service import auth_service
+from app.models import BusinessBase, BusinessResponse
 
 settings = Settings()
 load_dotenv()
@@ -398,6 +399,75 @@ async def get_user_profile(
         user = await database.get_or_create_user(anonymous_id, username)
     
     return user
+
+
+@app.get("/business", response_model=Optional[BusinessResponse])
+async def get_business(
+    request: Request,
+    database: Database = Depends(get_db),
+) -> Optional[BusinessResponse]:
+    """Get business information for the authenticated user."""
+    user_id, is_authenticated = get_authenticated_user_id(request)
+    
+    if not is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    business_data = await database.get_user_business(user_id)
+    if business_data:
+        return BusinessResponse(**business_data)
+    return None
+
+
+@app.post("/business", response_model=BusinessResponse)
+async def create_or_update_business(
+    business: BusinessBase,
+    request: Request,
+    database: Database = Depends(get_db),
+) -> BusinessResponse:
+    """Create or update business information for the authenticated user."""
+    user_id, is_authenticated = get_authenticated_user_id(request)
+    
+    if not is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    business_data = await database.create_or_update_business(
+        user_id=user_id,
+        name=business.name,
+        url=business.url,
+        description=business.description
+    )
+    
+    return BusinessResponse(**business_data)
+
+
+@app.delete("/business")
+async def delete_business(
+    request: Request,
+    database: Database = Depends(get_db),
+) -> dict:
+    """Delete business information for the authenticated user."""
+    user_id, is_authenticated = get_authenticated_user_id(request)
+    
+    if not is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    success = await database.delete_user_business(user_id)
+    if success:
+        return {"message": "Business information deleted successfully"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No business information found"
+        )
 
 
 if __name__ == "__main__":

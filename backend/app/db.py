@@ -397,3 +397,63 @@ class Database(BaseModel):
                 conversation_id, user_id
             )
             return row is not None
+
+    # Business-related methods
+    async def get_user_business(self, user_id: str) -> Optional[Dict]:
+        """Get business information for a user."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            row = await connection.fetchrow(
+                """
+                SELECT id, user_id, name, url, description, created_at, updated_at
+                FROM businesses 
+                WHERE user_id = $1
+                """,
+                user_id,
+            )
+            return dict(row) if row else None
+
+    async def create_or_update_business(
+        self, user_id: str, name: str, url: str, description: str
+    ) -> Dict:
+        """Create or update business information for a user."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            
+            # Check if business already exists
+            existing = await connection.fetchrow(
+                "SELECT id FROM businesses WHERE user_id = $1", user_id
+            )
+            
+            if existing:
+                # Update existing business
+                row = await connection.fetchrow(
+                    """
+                    UPDATE businesses 
+                    SET name = $2, url = $3, description = $4, updated_at = NOW()
+                    WHERE user_id = $1
+                    RETURNING id, user_id, name, url, description, created_at, updated_at
+                    """,
+                    user_id, name, url, description
+                )
+            else:
+                # Create new business
+                row = await connection.fetchrow(
+                    """
+                    INSERT INTO businesses (user_id, name, url, description)
+                    VALUES ($1, $2, $3, $4)
+                    RETURNING id, user_id, name, url, description, created_at, updated_at
+                    """,
+                    user_id, name, url, description
+                )
+            
+            return dict(row)
+
+    async def delete_user_business(self, user_id: str) -> bool:
+        """Delete business information for a user."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            result = await connection.execute(
+                "DELETE FROM businesses WHERE user_id = $1", user_id
+            )
+            return result == "DELETE 1"
