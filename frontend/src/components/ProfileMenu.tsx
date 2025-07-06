@@ -93,6 +93,7 @@ export const ProfileMenu: React.FC = () => {
             src={user.picture}
             alt={user.name}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full bg-blue-600 flex items-center justify-center">
@@ -113,6 +114,7 @@ export const ProfileMenu: React.FC = () => {
                   src={user.picture}
                   alt={user.name}
                   className="w-8 h-8 rounded-full"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
