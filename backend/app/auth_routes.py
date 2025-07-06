@@ -61,10 +61,10 @@ async def google_callback(
             max_age=settings.session_expires_days * 24 * 60 * 60,
         )
 
-        # Redirect to frontend with session ID as URL parameter (temporary)
-        # The frontend will then set this as a cookie on the correct domain
+        # Redirect to frontend with session ID and migration flag
+        # The frontend will then set this as a cookie on the correct domain and trigger migration
         return RedirectResponse(
-            url=f"{settings.frontend_url}/?session_id={session_id}",
+            url=f"{settings.frontend_url}/?session_id={session_id}&migrate_conversations=true",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -95,10 +95,10 @@ async def login(
             max_age=settings.session_expires_days * 24 * 60 * 60,
         )
 
-        return AuthResponse(authenticated=True, user=user, message="Login successful")
+        return AuthResponse(authenticated=True, user=user, message="Login successful", migrate_conversations=True)
     except Exception as e:
         return AuthResponse(
-            authenticated=False, user=None, message=f"Login failed: {str(e)}"
+            authenticated=False, user=None, message=f"Login failed: {str(e)}", migrate_conversations=False
         )
 
 

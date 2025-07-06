@@ -337,3 +337,63 @@ class Database(BaseModel):
                 user_id,
                 title,
             )
+
+    async def transfer_conversations_to_user(
+        self, from_user_id: str, to_user_id: str
+    ) -> int:
+        """Transfer all conversations from one user to another (e.g., anonymous to authenticated)."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            
+            # Update conversations to new user_id
+            result = await connection.execute(
+                """
+                UPDATE conversations 
+                SET user_id = $1, updated_at = NOW()
+                WHERE user_id = $2 AND is_active = TRUE
+                """,
+                to_user_id,
+                from_user_id,
+            )
+            
+            # Extract the number of affected rows
+            rows_affected = int(result.split()[-1]) if result.startswith("UPDATE") else 0
+            return rows_affected
+
+    async def get_conversation_owner(self, conversation_id: str) -> Optional[str]:
+        """Get the user_id who owns a conversation."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            row = await connection.fetchrow(
+                "SELECT user_id FROM conversations WHERE id = $1", conversation_id
+            )
+            return row["user_id"] if row else None
+
+    async def update_conversation_owner(
+        self, conversation_id: str, new_user_id: str
+    ) -> bool:
+        """Update the owner of a specific conversation."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            result = await connection.execute(
+                """
+                UPDATE conversations 
+                SET user_id = $1, updated_at = NOW()
+                WHERE id = $2
+                """,
+                new_user_id,
+                conversation_id,
+            )
+            return result == "UPDATE 1"
+
+    async def user_owns_conversation(
+        self, conversation_id: str, user_id: str
+    ) -> bool:
+        """Check if a user owns a specific conversation."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            row = await connection.fetchrow(
+                "SELECT 1 FROM conversations WHERE id = $1 AND user_id = $2", 
+                conversation_id, user_id
+            )
+            return row is not None

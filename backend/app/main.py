@@ -8,7 +8,7 @@ import json
 import uuid
 
 from dotenv import load_dotenv
-from fastapi import Depends, Request, HTTPException
+from fastapi import Depends, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
@@ -39,16 +39,13 @@ logfire.instrument_pydantic_ai()
 
 THIS_DIR = Path(__file__).parent
 
-# Mock user configuration
-MOCK_USER_ID = settings.mock_user_id
-MOCK_USERNAME = settings.mock_username
+# Anonymous user management
+ANONYMOUS_USER_COOKIE = "anonymous_user_id"
 
 
 @asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI):
     async with Database.connect() as db:
-        # Ensure mock user exists
-        await db.get_or_create_user(MOCK_USER_ID, MOCK_USERNAME)
         yield {"db": db}
 
 
@@ -75,20 +72,71 @@ async def get_db(request: Request) -> Database:
     return request.state.db
 
 
-def get_authenticated_user_id(request: Request) -> str:
-    """Get the authenticated user ID from session, fallback to mock user"""
+def get_authenticated_user_id(request: Request) -> tuple[str, bool]:
+    """Get the authenticated user ID from session.
+    
+    Returns:
+        tuple: (user_id, is_authenticated) - user_id and whether they're actually authenticated
+    """
     try:
-        from app.routes.auth import auth_service
+        from app.auth_service import auth_service
 
         session_id = request.cookies.get("session_id")
         if session_id:
             user_data = auth_service.get_session_user(session_id)
             if user_data:
-                return user_data.get("id", MOCK_USER_ID)
+                return user_data.get("id"), True
     except ImportError:
         pass
 
-    return MOCK_USER_ID
+    return None, False
+
+
+def get_or_create_anonymous_user_id(request: Request) -> str:
+    """Get or create an anonymous user ID using cookies."""
+    # Check if user has an existing anonymous ID cookie
+    anonymous_id = request.cookies.get(ANONYMOUS_USER_COOKIE)
+    if anonymous_id:
+        return anonymous_id
+    
+    # Generate a new anonymous user ID
+    return f"anon_{str(uuid.uuid4())}"
+
+
+def set_anonymous_user_cookie(response: Response, user_id: str):
+    """Helper function to set anonymous user cookie consistently."""
+    response.set_cookie(
+        key=ANONYMOUS_USER_COOKIE,
+        value=user_id,
+        httponly=False,  # Allow JavaScript access
+        secure=False,    # For localhost development  
+        samesite="lax",
+        path="/",
+        max_age=30 * 24 * 60 * 60,  # 30 days
+    )
+
+
+async def ensure_anonymous_user_exists(database: Database, user_id: str, is_anonymous: bool):
+    """Ensure anonymous user exists in database."""
+    if is_anonymous:
+        # Create a unique username for each anonymous user
+        username = f"Anonymous-{user_id.split('_')[-1][:8]}"
+        await database.get_or_create_user(user_id, username)
+
+
+def get_user_id_for_conversation(request: Request) -> tuple[str, bool]:
+    """Get user ID for conversation operations.
+    
+    Returns:
+        tuple: (user_id, is_anonymous) - user_id and whether they're anonymous
+    """
+    user_id, is_authenticated = get_authenticated_user_id(request)
+    if is_authenticated:
+        return user_id, False
+    
+    # Use anonymous user ID
+    anonymous_id = get_or_create_anonymous_user_id(request)
+    return anonymous_id, True
 
 
 class ChatMessage(TypedDict):
@@ -154,10 +202,19 @@ async def new_conversation() -> NewConversationResponse:
 @app.get("/chat/conversations", response_model=ConversationsResponse)
 async def get_conversations(
     request: Request,
+    response: Response,
     database: Database = Depends(get_db),
 ) -> ConversationsResponse:
-    """Get all conversations for the authenticated user."""
-    user_id = get_authenticated_user_id(request)
+    """Get all conversations for the user (authenticated or anonymous)."""
+    user_id, is_anonymous = get_user_id_for_conversation(request)
+    
+    # Set anonymous user cookie if needed
+    if is_anonymous:
+        set_anonymous_user_cookie(response, user_id)
+    
+    # Ensure anonymous user exists in database
+    await ensure_anonymous_user_exists(database, user_id, is_anonymous)
+    
     conversations = await database.get_user_conversations(user_id)
     # Convert dict rows to ConversationInfo objects
     conversation_objects = [ConversationInfo(**conv) for conv in conversations]
@@ -166,9 +223,25 @@ async def get_conversations(
 
 @app.get("/chat/{conversation_id}")
 async def get_chat(
-    conversation_id: str, database: Database = Depends(get_db)
+    conversation_id: str, request: Request, response: Response, database: Database = Depends(get_db)
 ) -> Response:
     """Get messages from a specific conversation."""
+    user_id, is_anonymous = get_user_id_for_conversation(request)
+    
+    # Set anonymous user cookie if needed
+    if is_anonymous:
+        set_anonymous_user_cookie(response, user_id)
+    
+    # Ensure anonymous user exists in database
+    await ensure_anonymous_user_exists(database, user_id, is_anonymous)
+    
+    # Check if user owns this conversation
+    if not await database.user_owns_conversation(conversation_id, user_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
     msgs = await database.get_conversation_messages(conversation_id)
     lines = [
         json.dumps(chat_msg).encode("utf-8")
@@ -178,14 +251,71 @@ async def get_chat(
     return Response(b"\n".join(lines), media_type="text/plain")
 
 
+@app.post("/chat/migrate-conversations")
+async def migrate_conversations(
+    request: Request,
+    database: Database = Depends(get_db),
+):
+    """Migrate anonymous conversations to authenticated user."""
+    user_id, is_authenticated = get_authenticated_user_id(request)
+    
+    if not is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User must be authenticated to migrate conversations"
+        )
+    
+    # Get the anonymous user ID from cookie
+    anonymous_user_id = request.cookies.get(ANONYMOUS_USER_COOKIE)
+    if not anonymous_user_id:
+        return {
+            "migrated_conversations": 0,
+            "user_id": user_id,
+            "message": "No anonymous conversations to migrate"
+        }
+    
+    # Transfer conversations from anonymous user to authenticated user
+    transferred_count = await database.transfer_conversations_to_user(
+        from_user_id=anonymous_user_id,
+        to_user_id=user_id
+    )
+    
+    return {
+        "migrated_conversations": transferred_count,
+        "user_id": user_id,
+        "anonymous_user_id": anonymous_user_id
+    }
+
+
 @app.post("/chat/{conversation_id}")
 async def post_chat(
     conversation_id: str,
     prompt: Annotated[str, fastapi.Form()],
     request: Request,
+    response: Response,
     database: Database = Depends(get_db),
 ) -> StreamingResponse:
     """Send a message to a specific conversation."""
+    
+    # Get user ID (authenticated or anonymous)
+    user_id, is_anonymous = get_user_id_for_conversation(request)
+
+    # Set anonymous user cookie if needed
+    if is_anonymous:
+        set_anonymous_user_cookie(response, user_id)
+
+    # Ensure anonymous user exists in database
+    await ensure_anonymous_user_exists(database, user_id, is_anonymous)
+
+    # Check if conversation exists and if user owns it (do this before streaming)
+    exists = await database.conversation_exists(conversation_id)
+    if exists:
+        # Verify ownership
+        if not await database.user_owns_conversation(conversation_id, user_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
 
     async def stream_messages():
         user_message = {
@@ -195,11 +325,7 @@ async def post_chat(
         }
         yield json.dumps(user_message).encode("utf-8") + b"\n"
 
-        # Get authenticated user ID
-        user_id = get_authenticated_user_id(request)
-
-        # Lazily create the conversation if it doesn't exist
-        exists = await database.conversation_exists(conversation_id)
+        # Create conversation if it doesn't exist (we already checked ownership above)
         if not exists:
             topic_result = await topic_agent.run([prompt])
             topic = topic_result.output.topic
@@ -230,14 +356,16 @@ async def post_chat(
 @app.get("/me", response_model=User)
 async def get_user_profile(
     request: Request,
+    response: Response,
     database: Database = Depends(get_db),
 ) -> User:
-    """Get the authenticated user's profile."""
-    try:
-        # Get session from cookie
-        session_id = request.cookies.get("session_id")
-        if session_id:
-            # Get user data from session
+    """Get the user's profile (authenticated or anonymous)."""
+    user_id, is_authenticated = get_authenticated_user_id(request)
+    
+    if is_authenticated:
+        try:
+            # Get user data from session for authenticated users
+            session_id = request.cookies.get("session_id")
             user_data = auth_service.get_session_user(session_id)
             if user_data:
                 # Create User model from auth data for chat system compatibility
@@ -254,13 +382,21 @@ async def get_user_profile(
                     created_at=datetime.now(tz=timezone.utc),
                     updated_at=datetime.now(tz=timezone.utc),
                 )
-    except ImportError:
-        pass
+        except ImportError:
+            pass
 
-    # Fallback to mock user
-    user = await database.get_user(settings.mock_user_id)
+    # Handle anonymous user
+    anonymous_id = get_or_create_anonymous_user_id(request)
+    
+    # Set anonymous user cookie
+    set_anonymous_user_cookie(response, anonymous_id)
+    
+    # Check if anonymous user exists in database, create if not
+    user = await database.get_user(anonymous_id)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        username = f"Anonymous-{anonymous_id.split('_')[-1][:8]}"
+        user = await database.get_or_create_user(anonymous_id, username)
+    
     return user
 
 

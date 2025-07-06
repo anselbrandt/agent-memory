@@ -58,9 +58,6 @@ class Settings(BaseSettings):
     )
     debug: bool = Field(default=False, description="Debug mode")
 
-    # Mock user settings (for development)
-    mock_user_id: str = Field(default="9000", description="Mock user ID for development")
-    mock_username: str = Field(default="Dave", description="Mock username for development")
 
     # Session settings
     session_expires_days: int = Field(default=7, description="Session expiration in days")

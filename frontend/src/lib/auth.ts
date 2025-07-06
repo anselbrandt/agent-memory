@@ -85,4 +85,21 @@ export const authAPI = {
       throw new Error("Logout failed");
     }
   },
+
+  // Migrate conversations
+  migrateConversations: async (): Promise<{ migrated_conversations: number; user_id: string; anonymous_user_id?: string }> => {
+    const response = await fetch(`${API_BASE_URL}/chat/migrate-conversations`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Migration failed");
+    }
+
+    return response.json();
+  },
 };

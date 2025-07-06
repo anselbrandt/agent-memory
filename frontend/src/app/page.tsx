@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { authAPI } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Messages from "@/components/Messages";
@@ -37,6 +38,7 @@ export default function ChatPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get("session_id");
+    const shouldMigrate = urlParams.get("migrate_conversations") === "true";
 
     if (sessionId) {
       // Set the session cookie on the frontend domain
@@ -52,6 +54,24 @@ export default function ChatPage() {
 
       // Refresh auth status to update the UI
       refreshAuth();
+
+      // Trigger conversation migration if needed
+      if (shouldMigrate) {
+        console.log("Triggering conversation migration...");
+        setTimeout(async () => {
+          try {
+            const result = await authAPI.migrateConversations();
+            console.log("Migration result:", result);
+            if (result.migrated_conversations > 0) {
+              // Refresh conversations list after migration
+              await loadConversations();
+              console.log(`Successfully migrated ${result.migrated_conversations} conversations`);
+            }
+          } catch (error) {
+            console.error("Migration failed:", error);
+          }
+        }, 1000); // Wait 1 second for auth to be established
+      }
     }
   }, [refreshAuth]);
 
@@ -75,6 +95,7 @@ export default function ChatPage() {
         "http://localhost:8000/chat/new-conversation",
         {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -97,7 +118,9 @@ export default function ChatPage() {
 
   async function loadConversations() {
     try {
-      const response = await fetch("http://localhost:8000/chat/conversations");
+      const response = await fetch("http://localhost:8000/chat/conversations", {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -112,7 +135,10 @@ export default function ChatPage() {
   async function loadConversation(conversationId: string) {
     try {
       const response = await fetch(
-        `http://localhost:8000/chat/${conversationId}`
+        `http://localhost:8000/chat/${conversationId}`,
+        {
+          credentials: "include",
+        }
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -171,6 +197,7 @@ export default function ChatPage() {
         `http://localhost:8000/chat/${currentConversationId}`,
         {
           method: "POST",
+          credentials: "include",
           body: formData,
         }
       );
