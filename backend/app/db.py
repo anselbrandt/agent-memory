@@ -7,6 +7,8 @@ from typing import Optional, List, Dict
 import asyncpg
 import logfire
 from pydantic import BaseModel, Field
+import redis
+
 
 from pydantic_ai.messages import (
     ModelMessage,
@@ -14,6 +16,17 @@ from pydantic_ai.messages import (
 )
 
 from app.models import ChatMessage, User
+from app.config import Settings
+
+settings = Settings()
+
+# Redis client
+redis_client = redis.from_url(str(settings.redis_url), decode_responses=True)
+
+
+def get_redis() -> redis.Redis:
+    """Get Redis client"""
+    return redis_client
 
 
 class Database(BaseModel):
@@ -47,9 +60,25 @@ class Database(BaseModel):
                     CREATE TABLE IF NOT EXISTS users (
                         id VARCHAR(255) PRIMARY KEY,
                         username VARCHAR(255) UNIQUE,
+                        provider_id VARCHAR(255) UNIQUE,
+                        email VARCHAR(255) UNIQUE,
+                        name VARCHAR(255),
+                        picture TEXT,
+                        provider VARCHAR(50) DEFAULT 'google',
+                        is_active BOOLEAN DEFAULT TRUE,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
+                    
+                    -- Add missing columns to existing users table if they don't exist
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255) UNIQUE;
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE;
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS picture TEXT;
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(50) DEFAULT 'google';
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
                     -- Conversations table
                     CREATE TABLE IF NOT EXISTS conversations (
@@ -70,6 +99,8 @@ class Database(BaseModel):
                     );
 
                     -- Indexes for better performance
+                    CREATE INDEX IF NOT EXISTS idx_users_provider_id ON users(provider_id);
+                    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
                     CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
                     CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);
                     CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);

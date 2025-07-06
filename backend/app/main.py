@@ -12,7 +12,6 @@ from fastapi import Depends, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
-from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
@@ -27,6 +26,7 @@ import logfire
 from app.agents import chat_agent, topic_agent, ChatDependencies
 from app.config import Settings
 from app.db import Database, User
+from app.routes import auth
 
 settings = Settings()
 load_dotenv()
@@ -62,6 +62,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
+
 
 @app.get("/")
 async def root():
@@ -70,6 +72,22 @@ async def root():
 
 async def get_db(request: Request) -> Database:
     return request.state.db
+
+
+def get_authenticated_user_id(request: Request) -> str:
+    """Get the authenticated user ID from session, fallback to mock user"""
+    try:
+        from app.routes.auth import auth_service
+        
+        session_id = request.cookies.get("session_id")
+        if session_id:
+            user_data = auth_service.get_session_user(session_id)
+            if user_data:
+                return user_data.get("id", MOCK_USER_ID)
+    except ImportError:
+        pass
+    
+    return MOCK_USER_ID
 
 
 class ChatMessage(TypedDict):
@@ -134,10 +152,12 @@ async def new_conversation() -> NewConversationResponse:
 
 @app.get("/chat/conversations", response_model=ConversationsResponse)
 async def get_conversations(
+    request: Request,
     database: Database = Depends(get_db),
 ) -> ConversationsResponse:
-    """Get all conversations for the mock user."""
-    conversations = await database.get_user_conversations(MOCK_USER_ID)
+    """Get all conversations for the authenticated user."""
+    user_id = get_authenticated_user_id(request)
+    conversations = await database.get_user_conversations(user_id)
     # Convert dict rows to ConversationInfo objects
     conversation_objects = [ConversationInfo(**conv) for conv in conversations]
     return ConversationsResponse(conversations=conversation_objects)
@@ -161,6 +181,7 @@ async def get_chat(
 async def post_chat(
     conversation_id: str,
     prompt: Annotated[str, fastapi.Form()],
+    request: Request,
     database: Database = Depends(get_db),
 ) -> StreamingResponse:
     """Send a message to a specific conversation."""
@@ -173,13 +194,16 @@ async def post_chat(
         }
         yield json.dumps(user_message).encode("utf-8") + b"\n"
 
+        # Get authenticated user ID
+        user_id = get_authenticated_user_id(request)
+
         # Lazily create the conversation if it doesn't exist
         exists = await database.conversation_exists(conversation_id)
         if not exists:
             topic_result = await topic_agent.run([prompt])
             topic = topic_result.output.topic
             await database.create_conversation_with_id(
-                conversation_id, MOCK_USER_ID, topic
+                conversation_id, user_id, topic
             )
 
         # fetch conversation history
@@ -206,11 +230,34 @@ async def post_chat(
 
 @app.get("/me", response_model=User)
 async def get_user_profile(
-    user_id: str = "9000",
+    request: Request,
     database: Database = Depends(get_db),
 ) -> User:
-    """Get the user's profile."""
-    user = await database.get_user(user_id)
+    """Get the authenticated user's profile."""
+    try:
+        from app.routes.auth import auth_service
+        
+        # Get session from cookie
+        session_id = request.cookies.get("session_id")
+        if session_id:
+            # Get user data from session
+            user_data = auth_service.get_session_user(session_id)
+            if user_data:
+                # Create User model from auth data for chat system compatibility
+                # Use the user's first name as username
+                first_name = user_data.get("name", "").split()[0] if user_data.get("name") else "User"
+                
+                return User(
+                    id=user_data.get("id", ""),
+                    username=first_name,
+                    created_at=datetime.now(tz=timezone.utc),
+                    updated_at=datetime.now(tz=timezone.utc)
+                )
+    except ImportError:
+        pass
+    
+    # Fallback to mock user
+    user = await database.get_user("9000")
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user

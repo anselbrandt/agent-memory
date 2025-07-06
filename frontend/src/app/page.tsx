@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Messages from "@/components/Messages";
@@ -21,12 +22,9 @@ interface Conversation {
   message_count: number;
 }
 
-interface User {
-  id: string;
-  username: string;
-}
 
 export default function ChatPage() {
+  const { refreshAuth } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -34,8 +32,27 @@ export default function ChatPage() {
     string | null
   >(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [user, setUser] = useState<User>();
   const convRef = useRef<HTMLDivElement>(null);
+
+  // Handle session_id from OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    if (sessionId) {
+      // Set the session cookie on the frontend domain
+      document.cookie = `session_id=${sessionId}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
+      
+      // Clean up the URL by removing the session_id parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      console.log('Session ID set from OAuth callback:', sessionId);
+      
+      // Refresh auth status to update the UI
+      refreshAuth();
+    }
+  }, [refreshAuth]);
 
   // Initialize the app with a new conversation
   useEffect(() => {
@@ -46,7 +63,6 @@ export default function ChatPage() {
     try {
       await createNewConversation();
       await loadConversations();
-      await getUser();
     } catch (error) {
       console.error("Error initializing app:", error);
     }
@@ -125,19 +141,6 @@ export default function ChatPage() {
     }
   }
 
-  async function getUser() {
-    try {
-      const response = await fetch(`http://localhost:8000/me`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const user_profile = await response.json();
-      setUser(user_profile);
-    } catch (error) {
-      console.error("Error getting user:", error);
-    }
-  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -307,7 +310,7 @@ export default function ChatPage() {
         onSelectConversation={loadConversation}
       />
       <div className="flex-1 flex flex-col h-screen">
-        <Header user={user} />
+        <Header />
         <Messages messages={messages} convRef={convRef} />
         <LoadingSpinner loading={loading} />
         <InputForm

@@ -57,3 +57,7 @@ class User(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Rebuild the models to resolve forward references
+ChatMessage.model_rebuild()
+User.model_rebuild()
