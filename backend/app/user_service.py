@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 import asyncpg
 
 from app.auth_models import User
-from app.db_models import UserResponse
+from app.models import UserResponse
 
 
 class UserService:

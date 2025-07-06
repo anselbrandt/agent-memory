@@ -41,22 +41,14 @@ class Database(BaseModel):
     @asynccontextmanager
     async def connect(cls) -> AsyncIterator[Database]:
         with logfire.span("connect to DB"):
-            pool = await asyncpg.create_pool(
-                user="postgres",
-                password="postgres",
-                database="agentmemory",
-                host="0.0.0.0",
-                port=5432,
-                min_size=1,
-                max_size=10,
-            )
+            pool = await asyncpg.create_pool(settings.database_url)
 
             # Create improved schema
             async with pool.acquire() as connection:
                 connection: asyncpg.Connection
                 await connection.execute(
                     """
-                    -- Users table
+                    -- Users table with enhanced schema
                     CREATE TABLE IF NOT EXISTS users (
                         id VARCHAR(255) PRIMARY KEY,
                         username VARCHAR(255) UNIQUE,
@@ -66,9 +58,9 @@ class Database(BaseModel):
                         picture TEXT,
                         provider VARCHAR(50) DEFAULT 'google',
                         is_active BOOLEAN DEFAULT TRUE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     );
                     
                     -- Add missing columns to existing users table if they don't exist
@@ -78,33 +70,77 @@ class Database(BaseModel):
                     ALTER TABLE users ADD COLUMN IF NOT EXISTS picture TEXT;
                     ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(50) DEFAULT 'google';
                     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
-                    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+                    -- Sessions table for auth management
+                    CREATE TABLE IF NOT EXISTS sessions (
+                        id VARCHAR(255) PRIMARY KEY,
+                        user_id VARCHAR(255) NOT NULL,
+                        provider_id VARCHAR(255) NOT NULL,
+                        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    );
 
                     -- Conversations table
                     CREATE TABLE IF NOT EXISTS conversations (
                         id VARCHAR(255) PRIMARY KEY,
                         user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                         title VARCHAR(500),
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                         is_active BOOLEAN DEFAULT TRUE
                     );
 
-                    -- Messages table (keeping original structure but adding conversation_id)
+                    -- Messages table 
                     CREATE TABLE IF NOT EXISTS messages (
                         id SERIAL PRIMARY KEY,
                         conversation_id VARCHAR(255) NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
                         message_list TEXT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    );
+
+                    -- Businesses table
+                    CREATE TABLE IF NOT EXISTS businesses (
+                        id SERIAL PRIMARY KEY,
+                        user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        name VARCHAR(255) NOT NULL,
+                        url TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     );
 
                     -- Indexes for better performance
                     CREATE INDEX IF NOT EXISTS idx_users_provider_id ON users(provider_id);
                     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+                    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+                    CREATE INDEX IF NOT EXISTS idx_sessions_provider_id ON sessions(provider_id);
                     CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
                     CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);
                     CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
                     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+                    CREATE INDEX IF NOT EXISTS idx_businesses_user_id ON businesses(user_id);
+
+                    -- Trigger to update updated_at timestamp
+                    CREATE OR REPLACE FUNCTION update_updated_at_column()
+                    RETURNS TRIGGER AS $$
+                    BEGIN
+                        NEW.updated_at = NOW();
+                        RETURN NEW;
+                    END;
+                    $$ language 'plpgsql';
+
+                    DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+                    CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+                        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+                    DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
+                    CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations
+                        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+                    DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses;
+                    CREATE TRIGGER update_businesses_updated_at BEFORE UPDATE ON businesses
+                        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
                     -- Function to generate conversation IDs
                     CREATE OR REPLACE FUNCTION generate_conversation_id() 
