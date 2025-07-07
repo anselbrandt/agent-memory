@@ -42,15 +42,30 @@ export default function InputForm({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
+    // Define allowed file types
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    const allowedDocumentTypes = [
+      'application/pdf',
+      'text/plain',
+      'text/html',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    
+    const isImage = allowedImageTypes.includes(file.type) || file.type.startsWith('image/');
+    const isDocument = allowedDocumentTypes.includes(file.type);
+    
+    // Validate file type - only images and documents allowed
+    if (!isImage && !isDocument) {
+      alert("Please select an image or document file. Audio and video files are not supported.");
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert("Image size must be less than 10MB");
+      alert("File size must be less than 10MB");
       return;
     }
 
@@ -132,23 +147,39 @@ export default function InputForm({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-gray-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
+                        {image.file_type.startsWith('image/') ? (
+                          <svg
+                            className="w-6 h-6 text-gray-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-6 h-6 text-gray-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          Image {index + 1} ready to send
+                          {image.file_type.startsWith('image/') ? 'Image' : 'Document'} {index + 1} ready to send
                         </p>
                         <p className="text-xs text-gray-600">
                           {image.original_name || image.filename}
@@ -203,7 +234,7 @@ export default function InputForm({
                   onClick={handleImageButtonClick}
                   disabled={uploading || loading}
                   className="px-3 py-2 rounded-xl font-medium transition-all duration-200 bg-gray-400 text-white hover:bg-gray-700 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Upload Image"
+                  title="Upload Image or Document"
                 >
                   {uploading ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -235,7 +266,7 @@ export default function InputForm({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.pdf,.txt,.html,.doc,.docx,.xls,.xlsx"
             onChange={handleImageUpload}
             className="hidden"
           />
