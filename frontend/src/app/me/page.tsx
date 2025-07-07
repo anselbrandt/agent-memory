@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import BusinessInformation from "@/components/BusinessInformation";
+import FacebookLogin from "@/components/FacebookLogin";
 
 interface BackendUser {
   id: string;
@@ -262,6 +263,11 @@ export default function MePage() {
           {/* Business Information */}
           <div className="mt-8">
             <BusinessInformation authenticated={authenticated} />
+          </div>
+
+          {/* Facebook Business Account */}
+          <div className="mt-8">
+            <FacebookLogin authenticated={authenticated} />
           </div>
 
           {/* Actions */}

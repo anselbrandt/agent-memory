@@ -8,6 +8,10 @@ import json
 import uuid
 
 from dotenv import load_dotenv
+
+# Load environment variables first, before any other imports
+load_dotenv()
+
 from fastapi import Depends, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
@@ -29,9 +33,9 @@ from app.db import Database, User
 from app.auth_routes import auth_router
 from app.auth_service import auth_service
 from app.models import BusinessBase, BusinessResponse
+from app.facebook_oauth_routes import router as facebook_router
 
 settings = Settings()
-load_dotenv()
 
 # 'if-token-present' means nothing will be sent (and the example will work) if you don't have logfire configured
 logfire.configure(send_to_logfire="if-token-present")
@@ -62,6 +66,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(facebook_router)
 
 
 @app.get("/")

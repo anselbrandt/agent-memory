@@ -110,6 +110,21 @@ class Database(BaseModel):
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     );
 
+                    -- Facebook credentials table
+                    CREATE TABLE IF NOT EXISTS facebook_credentials (
+                        id SERIAL PRIMARY KEY,
+                        user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        facebook_user_id VARCHAR(255) NOT NULL,
+                        facebook_user_name VARCHAR(255) NOT NULL,
+                        facebook_user_email VARCHAR(255),
+                        access_token TEXT NOT NULL,
+                        pages_data TEXT,
+                        instagram_accounts_data TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        UNIQUE(user_id)
+                    );
+
                     -- Indexes for better performance
                     CREATE INDEX IF NOT EXISTS idx_users_provider_id ON users(provider_id);
                     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -120,6 +135,8 @@ class Database(BaseModel):
                     CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
                     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
                     CREATE INDEX IF NOT EXISTS idx_businesses_user_id ON businesses(user_id);
+                    CREATE INDEX IF NOT EXISTS idx_facebook_credentials_user_id ON facebook_credentials(user_id);
+                    CREATE INDEX IF NOT EXISTS idx_facebook_credentials_facebook_user_id ON facebook_credentials(facebook_user_id);
 
                     -- Trigger to update updated_at timestamp
                     CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -140,6 +157,10 @@ class Database(BaseModel):
 
                     DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses;
                     CREATE TRIGGER update_businesses_updated_at BEFORE UPDATE ON businesses
+                        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+                    DROP TRIGGER IF EXISTS update_facebook_credentials_updated_at ON facebook_credentials;
+                    CREATE TRIGGER update_facebook_credentials_updated_at BEFORE UPDATE ON facebook_credentials
                         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
                     -- Function to generate conversation IDs
@@ -455,5 +476,79 @@ class Database(BaseModel):
             connection: asyncpg.Connection
             result = await connection.execute(
                 "DELETE FROM businesses WHERE user_id = $1", user_id
+            )
+            return result == "DELETE 1"
+
+    # Facebook credentials methods
+    async def get_facebook_credentials(self, user_id: str) -> Optional[Dict]:
+        """Get Facebook credentials for a user."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            row = await connection.fetchrow(
+                """
+                SELECT id, user_id, facebook_user_id, facebook_user_name, 
+                       facebook_user_email, access_token, pages_data, 
+                       instagram_accounts_data, created_at, updated_at
+                FROM facebook_credentials 
+                WHERE user_id = $1
+                """,
+                user_id,
+            )
+            return dict(row) if row else None
+
+    async def create_or_update_facebook_credentials(
+        self, user_id: str, facebook_user_id: str, facebook_user_name: str,
+        facebook_user_email: Optional[str], access_token: str, 
+        pages_data: Optional[str] = None, instagram_accounts_data: Optional[str] = None
+    ) -> Dict:
+        """Create or update Facebook credentials for a user."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            
+            # Check if credentials already exist
+            existing = await connection.fetchrow(
+                "SELECT id FROM facebook_credentials WHERE user_id = $1", user_id
+            )
+            
+            if existing:
+                # Update existing credentials
+                row = await connection.fetchrow(
+                    """
+                    UPDATE facebook_credentials 
+                    SET facebook_user_id = $2, facebook_user_name = $3, 
+                        facebook_user_email = $4, access_token = $5, 
+                        pages_data = $6, instagram_accounts_data = $7, updated_at = NOW()
+                    WHERE user_id = $1
+                    RETURNING id, user_id, facebook_user_id, facebook_user_name, 
+                              facebook_user_email, access_token, pages_data, 
+                              instagram_accounts_data, created_at, updated_at
+                    """,
+                    user_id, facebook_user_id, facebook_user_name, facebook_user_email,
+                    access_token, pages_data, instagram_accounts_data
+                )
+            else:
+                # Create new credentials
+                row = await connection.fetchrow(
+                    """
+                    INSERT INTO facebook_credentials 
+                    (user_id, facebook_user_id, facebook_user_name, facebook_user_email, 
+                     access_token, pages_data, instagram_accounts_data)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING id, user_id, facebook_user_id, facebook_user_name, 
+                              facebook_user_email, access_token, pages_data, 
+                              instagram_accounts_data, created_at, updated_at
+                    """,
+                    user_id, facebook_user_id, facebook_user_name, facebook_user_email,
+                    access_token, pages_data, instagram_accounts_data
+                )
+            
+            return dict(row)
+
+    async def delete_facebook_credentials(self, user_id: str) -> bool:
+        """Delete Facebook credentials for a user."""
+        async with self.pool.acquire() as connection:
+            connection: asyncpg.Connection
+            result = await connection.execute(
+                "DELETE FROM facebook_credentials WHERE user_id = $1", user_id
             )
             return result == "DELETE 1"

@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     google_user_url: str = Field(
         default="https://www.googleapis.com/oauth2/v1/userinfo", description="Google user info URL"
     )
+    
+    # Facebook OAuth settings
+    facebook_app_id: str = Field(default="", description="Facebook App ID")
+    facebook_app_secret: str = Field(default="", description="Facebook App Secret")
     jwt_secret_key: str = Field(default="", description="JWT Secret Key")
     jwt_algorithm: str = Field(default="HS256", description="JWT Algorithm")
     frontend_url: str = Field(
