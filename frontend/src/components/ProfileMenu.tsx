@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCachedImage } from "@/hooks/useCachedImage";
 import Link from "next/link";
 
 export const ProfileMenu: React.FC = () => {
   const { user, loading, authenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { imageSrc, imageStatus } = useCachedImage(user?.picture);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -88,18 +90,21 @@ export const ProfileMenu: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-300 hover:ring-gray-400 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        {user?.picture ? (
+        {imageSrc && imageStatus === "loaded" ? (
           <img
-            src={user.picture}
+            src={imageSrc}
             alt={user.name}
             className="w-full h-full object-cover"
-            loading="lazy"
           />
         ) : (
           <div className="w-full h-full bg-blue-600 flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">
-              {user?.name.charAt(0).toUpperCase()}
-            </span>
+            {imageStatus === "loading" && user?.picture ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <span className="text-white font-semibold text-sm">
+                {user?.name.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
         )}
       </button>
@@ -109,12 +114,11 @@ export const ProfileMenu: React.FC = () => {
           {/* User Info */}
           <div className="px-4 py-3 border-b border-gray-100">
             <div className="flex items-center space-x-3">
-              {user?.picture ? (
+              {imageSrc && imageStatus === "loaded" ? (
                 <img
-                  src={user.picture}
+                  src={imageSrc}
                   alt={user.name}
                   className="w-8 h-8 rounded-full"
-                  loading="lazy"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
