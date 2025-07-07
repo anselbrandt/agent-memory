@@ -23,6 +23,8 @@ interface UploadedImage {
   public_url: string;
   s3_url?: string;
   upload_error?: string;
+  file_type: string;
+  original_name: string;
 }
 
 export default function InputForm({
@@ -71,7 +73,13 @@ export default function InputForm({
       const result = await response.json();
 
       if (result.success) {
-        setUploadedImages((prev) => [...prev, result.data]);
+        // Add file type and original name to the uploaded image data
+        const imageWithType = {
+          ...result.data,
+          file_type: file.type,
+          original_name: file.name
+        };
+        setUploadedImages((prev) => [...prev, imageWithType]);
         // Clear the file input
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
@@ -100,7 +108,11 @@ export default function InputForm({
 
     // Call the original onSubmit handler with the attachments
     const formEvent = e as any;
-    formEvent.attachments = uploadedImages.map(img => img.s3_url || img.public_url);
+    formEvent.attachments = uploadedImages.map(img => ({
+      url: img.s3_url || img.public_url,
+      file_type: img.file_type,
+      friendly_name: img.original_name
+    }));
     onSubmit(formEvent);
 
     // Clear the uploaded images after submission
@@ -139,7 +151,7 @@ export default function InputForm({
                           Image {index + 1} ready to send
                         </p>
                         <p className="text-xs text-gray-600">
-                          {image.filename}
+                          {image.original_name || image.filename}
                         </p>
                         {image.upload_error && (
                           <p className="text-xs text-orange-600">

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Annotated, Literal, Optional, List
-from pydantic import HttpUrl
+from pydantic import HttpUrl, BaseModel
 import json
 import uuid
 
@@ -178,6 +178,14 @@ class ConversationsResponse(BaseModel):
     conversations: List[ConversationInfo]
 
 
+class Attachment(BaseModel):
+    """Attachment with URL, file type, and friendly name."""
+    
+    url: HttpUrl
+    file_type: str
+    friendly_name: str
+
+
 def to_chat_message(m: ModelMessage) -> Optional[ChatMessage]:
     if isinstance(m, ModelRequest):
         for part in m.parts:
@@ -328,24 +336,31 @@ async def post_chat(
             )
 
     # Parse and validate attachments if provided
-    attachment_urls: List[HttpUrl] = []
+    validated_attachments: List[Attachment] = []
     if attachments:
         try:
             attachment_data = json.loads(attachments)
             if isinstance(attachment_data, list):
-                # Validate each URL
-                for url in attachment_data:
+                # Validate each attachment
+                for item in attachment_data:
                     try:
-                        validated_url = HttpUrl(url)
-                        attachment_urls.append(validated_url)
+                        if isinstance(item, dict) and 'url' in item and 'file_type' in item and 'friendly_name' in item:
+                            attachment = Attachment(
+                                url=item['url'], 
+                                file_type=item['file_type'],
+                                friendly_name=item['friendly_name']
+                            )
+                            validated_attachments.append(attachment)
+                        else:
+                            print(f"Invalid attachment format: {item}")
                     except Exception as e:
-                        print(f"Invalid URL in attachments: {url} - {e}")
+                        print(f"Invalid attachment: {item} - {e}")
         except json.JSONDecodeError:
             print(f"Failed to parse attachments JSON: {attachments}")
     
     # Print the attachments list as requested
-    if attachment_urls:
-        print(f"Attachments received: {[str(url) for url in attachment_urls]}")
+    if validated_attachments:
+        print(f"Attachments received: {[(str(att.url), att.file_type, att.friendly_name) for att in validated_attachments]}")
     
     async def stream_messages():
         user_message = {
