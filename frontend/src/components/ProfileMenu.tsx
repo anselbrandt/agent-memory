@@ -93,7 +93,7 @@ export const ProfileMenu: React.FC = () => {
         {imageSrc && imageStatus === "loaded" ? (
           <img
             src={imageSrc}
-            alt={user.name}
+            alt={user?.name}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -117,7 +117,7 @@ export const ProfileMenu: React.FC = () => {
               {imageSrc && imageStatus === "loaded" ? (
                 <img
                   src={imageSrc}
-                  alt={user.name}
+                  alt={user?.name}
                   className="w-8 h-8 rounded-full"
                 />
               ) : (

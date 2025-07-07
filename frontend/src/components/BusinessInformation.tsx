@@ -22,7 +22,9 @@ interface BusinessInformationProps {
   authenticated: boolean;
 }
 
-export default function BusinessInformation({ authenticated }: BusinessInformationProps) {
+export default function BusinessInformation({
+  authenticated,
+}: BusinessInformationProps) {
   const [business, setBusiness] = useState<Business | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,8 +79,12 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name.trim() || !formData.url.trim() || !formData.description.trim()) {
+
+    if (
+      !formData.name.trim() ||
+      !formData.url.trim() ||
+      !formData.description.trim()
+    ) {
       setError("All fields are required");
       return;
     }
@@ -98,7 +104,9 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to save business information");
+        throw new Error(
+          errorData.detail || "Failed to save business information"
+        );
       }
 
       const data = await response.json();
@@ -106,7 +114,11 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
       setIsEditing(false);
     } catch (err) {
       console.error("Error saving business:", err);
-      setError(err instanceof Error ? err.message : "Failed to save business information");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save business information"
+      );
     } finally {
       setLoading(false);
     }
@@ -132,7 +144,9 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete your business information?")) {
+    if (
+      !confirm("Are you sure you want to delete your business information?")
+    ) {
       return;
     }
 
@@ -147,7 +161,9 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to delete business information");
+        throw new Error(
+          errorData.detail || "Failed to delete business information"
+        );
       }
 
       setBusiness(null);
@@ -155,7 +171,11 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
       setIsEditing(false);
     } catch (err) {
       console.error("Error deleting business:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete business information");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete business information"
+      );
     } finally {
       setLoading(false);
     }
@@ -195,7 +215,9 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            <p className="text-sm">Please log in to manage your business information.</p>
+            <p className="text-sm">
+              Please log in to manage your business information.
+            </p>
           </div>
         </div>
       </div>
@@ -229,8 +251,18 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
               className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={loading}
             >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
               Edit
             </button>
@@ -239,8 +271,18 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
               className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               disabled={loading}
             >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
               Delete
             </button>
@@ -263,14 +305,19 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
       {!loading && (!business || isEditing) && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="business-name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="business-name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Business Name
             </label>
             <input
               id="business-name"
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter your business name"
               required
@@ -278,14 +325,19 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
           </div>
 
           <div>
-            <label htmlFor="business-url" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="business-url"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Business URL
             </label>
             <input
               id="business-url"
               type="url"
               value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, url: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="https://yourwebsite.com"
               required
@@ -293,13 +345,18 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
           </div>
 
           <div>
-            <label htmlFor="business-description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="business-description"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Business Description
             </label>
             <textarea
               id="business-description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Describe your business, what you do, your target market, and any other relevant information that would help AI agents understand your context."
@@ -313,8 +370,18 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               disabled={loading}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Save Business Information
             </button>
@@ -336,12 +403,16 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
       {!loading && business && !isEditing && (
         <div className="space-y-4">
           <div>
-            <span className="block text-sm font-medium text-gray-500 mb-1">Business Name</span>
+            <span className="block text-sm font-medium text-gray-500 mb-1">
+              Business Name
+            </span>
             <span className="text-sm text-gray-900">{business.name}</span>
           </div>
 
           <div>
-            <span className="block text-sm font-medium text-gray-500 mb-1">Website</span>
+            <span className="block text-sm font-medium text-gray-500 mb-1">
+              Website
+            </span>
             <a
               href={business.url}
               target="_blank"
@@ -353,21 +424,27 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
           </div>
 
           <div>
-            <span className="block text-sm font-medium text-gray-500 mb-1">Description</span>
-            <p className="text-sm text-gray-900 whitespace-pre-wrap">{business.description}</p>
+            <span className="block text-sm font-medium text-gray-500 mb-1">
+              Description
+            </span>
+            <p className="text-sm text-gray-900 whitespace-pre-wrap">
+              {business.description}
+            </p>
           </div>
 
           <div className="pt-4 border-t border-gray-200">
             <div className="flex items-center text-xs text-gray-500 space-x-4">
               <span>
-                Created: {new Date(business.created_at).toLocaleDateString("en-US", {
+                Created:{" "}
+                {new Date(business.created_at).toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
                 })}
               </span>
               <span>
-                Updated: {new Date(business.updated_at).toLocaleDateString("en-US", {
+                Updated:{" "}
+                {new Date(business.updated_at).toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
@@ -396,18 +473,10 @@ export default function BusinessInformation({ authenticated }: BusinessInformati
             </svg>
             <p className="text-sm">No business information saved.</p>
             <p className="text-xs text-gray-400 mt-1">
-              Add your business details to help AI agents provide more relevant assistance.
+              Add your business details to help AI agents provide more relevant
+              assistance.
             </p>
           </div>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Business Information
-          </button>
         </div>
       )}
     </div>
