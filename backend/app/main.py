@@ -23,6 +23,8 @@ from pydantic_ai.messages import (
     ModelResponse,
     TextPart,
     UserPromptPart,
+    ImageUrl,
+    DocumentUrl,
 )
 from typing_extensions import TypedDict
 import fastapi
@@ -57,7 +59,7 @@ async def lifespan(_app: fastapi.FastAPI):
 
 
 app = fastapi.FastAPI(lifespan=lifespan)
-logfire.instrument_fastapi(app)
+# logfire.instrument_fastapi(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -83,7 +85,7 @@ async def get_db(request: Request) -> Database:
 
 def get_authenticated_user_id(request: Request) -> tuple[str, bool]:
     """Get the authenticated user ID from session.
-    
+
     Returns:
         tuple: (user_id, is_authenticated) - user_id and whether they're actually authenticated
     """
@@ -107,7 +109,7 @@ def get_or_create_anonymous_user_id(request: Request) -> str:
     anonymous_id = request.cookies.get(ANONYMOUS_USER_COOKIE)
     if anonymous_id:
         return anonymous_id
-    
+
     # Generate a new anonymous user ID
     return f"anon_{str(uuid.uuid4())}"
 
@@ -118,14 +120,16 @@ def set_anonymous_user_cookie(response: Response, user_id: str):
         key=ANONYMOUS_USER_COOKIE,
         value=user_id,
         httponly=False,  # Allow JavaScript access
-        secure=False,    # For localhost development  
+        secure=False,  # For localhost development
         samesite="lax",
         path="/",
         max_age=30 * 24 * 60 * 60,  # 30 days
     )
 
 
-async def ensure_anonymous_user_exists(database: Database, user_id: str, is_anonymous: bool):
+async def ensure_anonymous_user_exists(
+    database: Database, user_id: str, is_anonymous: bool
+):
     """Ensure anonymous user exists in database."""
     if is_anonymous:
         # Create a unique username for each anonymous user
@@ -135,14 +139,14 @@ async def ensure_anonymous_user_exists(database: Database, user_id: str, is_anon
 
 def get_user_id_for_conversation(request: Request) -> tuple[str, bool]:
     """Get user ID for conversation operations.
-    
+
     Returns:
         tuple: (user_id, is_anonymous) - user_id and whether they're anonymous
     """
     user_id, is_authenticated = get_authenticated_user_id(request)
     if is_authenticated:
         return user_id, False
-    
+
     # Use anonymous user ID
     anonymous_id = get_or_create_anonymous_user_id(request)
     return anonymous_id, True
@@ -180,7 +184,7 @@ class ConversationsResponse(BaseModel):
 
 class Attachment(BaseModel):
     """Attachment with URL, file type, and friendly name."""
-    
+
     url: HttpUrl
     file_type: str
     friendly_name: str
@@ -224,14 +228,14 @@ async def get_conversations(
 ) -> ConversationsResponse:
     """Get all conversations for the user (authenticated or anonymous)."""
     user_id, is_anonymous = get_user_id_for_conversation(request)
-    
+
     # Set anonymous user cookie if needed
     if is_anonymous:
         set_anonymous_user_cookie(response, user_id)
-    
+
     # Ensure anonymous user exists in database
     await ensure_anonymous_user_exists(database, user_id, is_anonymous)
-    
+
     conversations = await database.get_user_conversations(user_id)
     # Convert dict rows to ConversationInfo objects
     conversation_objects = [ConversationInfo(**conv) for conv in conversations]
@@ -240,25 +244,27 @@ async def get_conversations(
 
 @app.get("/chat/{conversation_id}")
 async def get_chat(
-    conversation_id: str, request: Request, response: Response, database: Database = Depends(get_db)
+    conversation_id: str,
+    request: Request,
+    response: Response,
+    database: Database = Depends(get_db),
 ) -> Response:
     """Get messages from a specific conversation."""
     user_id, is_anonymous = get_user_id_for_conversation(request)
-    
+
     # Set anonymous user cookie if needed
     if is_anonymous:
         set_anonymous_user_cookie(response, user_id)
-    
+
     # Ensure anonymous user exists in database
     await ensure_anonymous_user_exists(database, user_id, is_anonymous)
-    
+
     # Check if user owns this conversation
     if not await database.user_owns_conversation(conversation_id, user_id):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
         )
-    
+
     msgs = await database.get_conversation_messages(conversation_id)
     lines = [
         json.dumps(chat_msg).encode("utf-8")
@@ -275,32 +281,31 @@ async def migrate_conversations(
 ):
     """Migrate anonymous conversations to authenticated user."""
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User must be authenticated to migrate conversations"
+            detail="User must be authenticated to migrate conversations",
         )
-    
+
     # Get the anonymous user ID from cookie
     anonymous_user_id = request.cookies.get(ANONYMOUS_USER_COOKIE)
     if not anonymous_user_id:
         return {
             "migrated_conversations": 0,
             "user_id": user_id,
-            "message": "No anonymous conversations to migrate"
+            "message": "No anonymous conversations to migrate",
         }
-    
+
     # Transfer conversations from anonymous user to authenticated user
     transferred_count = await database.transfer_conversations_to_user(
-        from_user_id=anonymous_user_id,
-        to_user_id=user_id
+        from_user_id=anonymous_user_id, to_user_id=user_id
     )
-    
+
     return {
         "migrated_conversations": transferred_count,
         "user_id": user_id,
-        "anonymous_user_id": anonymous_user_id
+        "anonymous_user_id": anonymous_user_id,
     }
 
 
@@ -314,7 +319,7 @@ async def post_chat(
     attachments: Annotated[Optional[str], fastapi.Form()] = None,
 ) -> StreamingResponse:
     """Send a message to a specific conversation."""
-    
+
     # Get user ID (authenticated or anonymous)
     user_id, is_anonymous = get_user_id_for_conversation(request)
 
@@ -331,8 +336,7 @@ async def post_chat(
         # Verify ownership
         if not await database.user_owns_conversation(conversation_id, user_id):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conversation not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
             )
 
     # Parse and validate attachments if provided
@@ -344,11 +348,16 @@ async def post_chat(
                 # Validate each attachment
                 for item in attachment_data:
                     try:
-                        if isinstance(item, dict) and 'url' in item and 'file_type' in item and 'friendly_name' in item:
+                        if (
+                            isinstance(item, dict)
+                            and "url" in item
+                            and "file_type" in item
+                            and "friendly_name" in item
+                        ):
                             attachment = Attachment(
-                                url=item['url'], 
-                                file_type=item['file_type'],
-                                friendly_name=item['friendly_name']
+                                url=item["url"],
+                                file_type=item["file_type"],
+                                friendly_name=item["friendly_name"],
                             )
                             validated_attachments.append(attachment)
                         else:
@@ -357,11 +366,13 @@ async def post_chat(
                         print(f"Invalid attachment: {item} - {e}")
         except json.JSONDecodeError:
             print(f"Failed to parse attachments JSON: {attachments}")
-    
+
     # Print the attachments list as requested
     if validated_attachments:
-        print(f"Attachments received: {[(str(att.url), att.file_type, att.friendly_name) for att in validated_attachments]}")
-    
+        print(
+            f"Attachments received: {[(str(att.url), att.file_type, att.friendly_name) for att in validated_attachments]}"
+        )
+
     async def stream_messages():
         user_message = {
             "role": "user",
@@ -372,6 +383,7 @@ async def post_chat(
 
         # Create conversation if it doesn't exist (we already checked ownership above)
         if not exists:
+            # Use only the text prompt for topic generation
             topic_result = await topic_agent.run([prompt])
             topic = topic_result.output.topic
             await database.create_conversation_with_id(conversation_id, user_id, topic)
@@ -379,12 +391,41 @@ async def post_chat(
         # fetch conversation history
         messages = await database.get_conversation_messages(conversation_id)
 
+        # Build prompt with attachments
+        prompt_parts = [prompt]
+
+        # Add image and document attachments to the prompt
+        for attachment in validated_attachments:
+            mime_type = attachment.file_type.lower()
+            url_str = str(attachment.url)
+
+            # Check if it's an image
+            if mime_type.startswith("image/"):
+                prompt_parts.append(ImageUrl(url=url_str))
+            # Check if it's a document (PDF, text, etc.)
+            elif mime_type in [
+                "application/pdf",
+                "text/plain",
+                "text/html",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ]:
+                prompt_parts.append(DocumentUrl(url=url_str))
+            # Skip video and audio files as requested
+            elif mime_type.startswith(("video/", "audio/")):
+                print(
+                    f"Skipping {attachment.file_type} attachment: {attachment.friendly_name}"
+                )
+                continue
+
         # run the agent and stream output
         current_date = date.today()
         date_string = current_date.strftime("%Y-%m-%d")
         deps = ChatDependencies(todays_date=date_string)
         async with chat_agent.run_stream(
-            prompt, message_history=messages, deps=deps
+            prompt_parts, message_history=messages, deps=deps
         ) as result:
             async for text in result.stream(debounce_by=settings.chat_debounce_delay):
                 m = ModelResponse(parts=[TextPart(text)], timestamp=result.timestamp())
@@ -406,7 +447,7 @@ async def get_user_profile(
 ) -> User:
     """Get the user's profile (authenticated or anonymous)."""
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if is_authenticated:
         try:
             # Get user data from session for authenticated users
@@ -432,16 +473,16 @@ async def get_user_profile(
 
     # Handle anonymous user
     anonymous_id = get_or_create_anonymous_user_id(request)
-    
+
     # Set anonymous user cookie
     set_anonymous_user_cookie(response, anonymous_id)
-    
+
     # Check if anonymous user exists in database, create if not
     user = await database.get_user(anonymous_id)
     if user is None:
         username = f"Anonymous-{anonymous_id.split('_')[-1][:8]}"
         user = await database.get_or_create_user(anonymous_id, username)
-    
+
     return user
 
 
@@ -452,13 +493,12 @@ async def get_business(
 ) -> Optional[BusinessResponse]:
     """Get business information for the authenticated user."""
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
         )
-    
+
     business_data = await database.get_user_business(user_id)
     if business_data:
         return BusinessResponse(**business_data)
@@ -473,20 +513,19 @@ async def create_or_update_business(
 ) -> BusinessResponse:
     """Create or update business information for the authenticated user."""
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
         )
-    
+
     business_data = await database.create_or_update_business(
         user_id=user_id,
         name=business.name,
         url=business.url,
-        description=business.description
+        description=business.description,
     )
-    
+
     return BusinessResponse(**business_data)
 
 
@@ -497,20 +536,19 @@ async def delete_business(
 ) -> dict:
     """Delete business information for the authenticated user."""
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
         )
-    
+
     success = await database.delete_user_business(user_id)
     if success:
         return {"message": "Business information deleted successfully"}
     else:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No business information found"
+            detail="No business information found",
         )
 
 
