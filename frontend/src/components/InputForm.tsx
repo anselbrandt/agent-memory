@@ -6,6 +6,8 @@ import {
 } from "react";
 
 import UpArrow from "@/icons/UpArrow";
+import PlusIcon from "@/icons/PlusIcon";
+import LargePlusIcon from "@/icons/LargePlusIcon";
 
 interface Props {
   onSubmit: FormEventHandler<HTMLFormElement>;
@@ -28,7 +30,7 @@ export default function InputForm({
       <div className="border-t border-gray-200 p-6 flex-shrink-0 bg-white">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={onSubmit}>
-            <div className="flex gap-3">
+            <div className="flex flex-col">
               <input
                 id="prompt-input"
                 name="prompt"
@@ -40,20 +42,27 @@ export default function InputForm({
                 onKeyDown={onKeyDown}
                 autoFocus
               />
-              <button
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 bg-gray-400 text-white hover:bg-gray-700 transform hover:scale-105 active:scale-95`}
-                type="submit"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : (
+              <div className="flex flex-row justify-between mt-2 h-8">
+                <button className="px-3 py-2 rounded-xl font-medium transition-all duration-200 bg-gray-400 text-white hover:bg-gray-700 transform hover:scale-105 active:scale-95">
                   <div className="hover:cursor-pointer transition-transform duration-100 hover:scale-150">
-                    <UpArrow />
+                    <PlusIcon />
                   </div>
-                )}
-              </button>
+                </button>
+                <button
+                  className="px-3 py-2 rounded-xl font-medium transition-all duration-200 bg-gray-400 text-white hover:bg-gray-700 transform hover:scale-105 active:scale-95"
+                  type="submit"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : (
+                    <div className="hover:cursor-pointer transition-transform duration-100 hover:scale-150">
+                      <UpArrow />
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>
