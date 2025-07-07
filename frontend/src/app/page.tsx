@@ -192,6 +192,12 @@ export default function ChatPage() {
     try {
       const formData = new FormData();
       formData.append("prompt", trimmedPrompt);
+      
+      // Add attachments if they exist
+      const formEvent = e as any;
+      if (formEvent.attachments && formEvent.attachments.length > 0) {
+        formData.append("attachments", JSON.stringify(formEvent.attachments));
+      }
 
       const response = await fetch(
         `http://localhost:8000/chat/${currentConversationId}`,

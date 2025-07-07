@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Annotated, Literal, Optional, List
+from pydantic import HttpUrl
 import json
 import uuid
 
@@ -302,6 +303,7 @@ async def post_chat(
     request: Request,
     response: Response,
     database: Database = Depends(get_db),
+    attachments: Annotated[Optional[str], fastapi.Form()] = None,
 ) -> StreamingResponse:
     """Send a message to a specific conversation."""
     
@@ -325,6 +327,26 @@ async def post_chat(
                 detail="Conversation not found"
             )
 
+    # Parse and validate attachments if provided
+    attachment_urls: List[HttpUrl] = []
+    if attachments:
+        try:
+            attachment_data = json.loads(attachments)
+            if isinstance(attachment_data, list):
+                # Validate each URL
+                for url in attachment_data:
+                    try:
+                        validated_url = HttpUrl(url)
+                        attachment_urls.append(validated_url)
+                    except Exception as e:
+                        print(f"Invalid URL in attachments: {url} - {e}")
+        except json.JSONDecodeError:
+            print(f"Failed to parse attachments JSON: {attachments}")
+    
+    # Print the attachments list as requested
+    if attachment_urls:
+        print(f"Attachments received: {[str(url) for url in attachment_urls]}")
+    
     async def stream_messages():
         user_message = {
             "role": "user",
