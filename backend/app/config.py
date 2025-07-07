@@ -30,15 +30,18 @@ class Settings(BaseSettings):
         default="", description="Google OAuth Client Secret"
     )
     google_oauth_url: str = Field(
-        default="https://accounts.google.com/o/oauth2/auth", description="Google OAuth URL"
+        default="https://accounts.google.com/o/oauth2/auth",
+        description="Google OAuth URL",
     )
     google_token_url: str = Field(
-        default="https://accounts.google.com/o/oauth2/token", description="Google token URL"
+        default="https://accounts.google.com/o/oauth2/token",
+        description="Google token URL",
     )
     google_user_url: str = Field(
-        default="https://www.googleapis.com/oauth2/v1/userinfo", description="Google user info URL"
+        default="https://www.googleapis.com/oauth2/v1/userinfo",
+        description="Google user info URL",
     )
-    
+
     # Facebook OAuth settings
     facebook_app_id: str = Field(default="", description="Facebook App ID")
     facebook_app_secret: str = Field(default="", description="Facebook App Secret")
@@ -62,17 +65,24 @@ class Settings(BaseSettings):
     )
     debug: bool = Field(default=False, description="Debug mode")
 
-
     # Session settings
-    session_expires_days: int = Field(default=7, description="Session expiration in days")
+    session_expires_days: int = Field(
+        default=7, description="Session expiration in days"
+    )
 
     # Chat/AI settings
-    chat_debounce_delay: float = Field(default=0.01, description="Chat stream debounce delay")
+    chat_debounce_delay: float = Field(
+        default=0.01, description="Chat stream debounce delay"
+    )
 
     # Frontend specific
     cors_origins: list[str] = Field(
         default=["http://localhost:3000"], description="CORS allowed origins"
     )
+
+    # S3-Style Image Upload Service
+    s3_api_token: str = Field(default="", description="S3 API Token")
+    s3_url: str = Field(default="", description="S3 Service URL")
 
     @classmethod
     def settings_customise_sources(

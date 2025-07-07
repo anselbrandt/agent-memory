@@ -34,6 +34,7 @@ from app.auth_routes import auth_router
 from app.auth_service import auth_service
 from app.models import BusinessBase, BusinessResponse
 from app.facebook_oauth_routes import router as facebook_router
+from app.upload_routes import router as upload_router
 
 settings = Settings()
 
@@ -67,6 +68,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(facebook_router)
+app.include_router(upload_router)
 
 
 @app.get("/")
