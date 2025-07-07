@@ -87,7 +87,11 @@ export const authAPI = {
   },
 
   // Migrate conversations
-  migrateConversations: async (): Promise<{ migrated_conversations: number; user_id: string; anonymous_user_id?: string }> => {
+  migrateConversations: async (): Promise<{
+    migrated_conversations: number;
+    user_id: string;
+    anonymous_user_id?: string;
+  }> => {
     const response = await fetch(`${API_BASE_URL}/chat/migrate-conversations`, {
       method: "POST",
       credentials: "include",

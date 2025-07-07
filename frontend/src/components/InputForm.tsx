@@ -43,23 +43,33 @@ export default function InputForm({
     if (!file) return;
 
     // Define allowed file types
-    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    const allowedDocumentTypes = [
-      'application/pdf',
-      'text/plain',
-      'text/html',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    const allowedImageTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
     ];
-    
-    const isImage = allowedImageTypes.includes(file.type) || file.type.startsWith('image/');
+    const allowedDocumentTypes = [
+      "application/pdf",
+      "text/plain",
+      "text/html",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    const isImage =
+      allowedImageTypes.includes(file.type) || file.type.startsWith("image/");
     const isDocument = allowedDocumentTypes.includes(file.type);
-    
+
     // Validate file type - only images and documents allowed
     if (!isImage && !isDocument) {
-      alert("Please select an image or document file. Audio and video files are not supported.");
+      alert(
+        "Please select an image or document file. Audio and video files are not supported."
+      );
       return;
     }
 
@@ -92,7 +102,7 @@ export default function InputForm({
         const imageWithType = {
           ...result.data,
           file_type: file.type,
-          original_name: file.name
+          original_name: file.name,
         };
         setUploadedImages((prev) => [...prev, imageWithType]);
         // Clear the file input
@@ -123,10 +133,10 @@ export default function InputForm({
 
     // Call the original onSubmit handler with the attachments
     const formEvent = e as any;
-    formEvent.attachments = uploadedImages.map(img => ({
+    formEvent.attachments = uploadedImages.map((img) => ({
       url: img.s3_url || img.public_url,
       file_type: img.file_type,
-      friendly_name: img.original_name
+      friendly_name: img.original_name,
     }));
     onSubmit(formEvent);
 
@@ -143,11 +153,14 @@ export default function InputForm({
           {uploadedImages.length > 0 && (
             <div className="mb-4 space-y-2">
               {uploadedImages.map((image, index) => (
-                <div key={index} className="p-3 border border-gray-300 rounded-xl bg-gray-50">
+                <div
+                  key={index}
+                  className="p-3 border border-gray-300 rounded-xl bg-gray-50"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                        {image.file_type.startsWith('image/') ? (
+                        {image.file_type.startsWith("image/") ? (
                           <svg
                             className="w-6 h-6 text-gray-600"
                             fill="none"
@@ -179,7 +192,10 @@ export default function InputForm({
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {image.file_type.startsWith('image/') ? 'Image' : 'Document'} {index + 1} ready to send
+                          {image.file_type.startsWith("image/")
+                            ? "Image"
+                            : "Document"}{" "}
+                          {index + 1} ready to send
                         </p>
                         <p className="text-xs text-gray-600">
                           {image.original_name || image.filename}

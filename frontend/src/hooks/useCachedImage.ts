@@ -7,7 +7,9 @@ import { useEffect, useState } from "react";
  * Particularly useful for external images (like Google profile pictures) in React StrictMode
  */
 export function useCachedImage(src: string | undefined) {
-  const [imageStatus, setImageStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [imageStatus, setImageStatus] = useState<
+    "loading" | "loaded" | "error"
+  >("loading");
   const [imageSrc, setImageSrc] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function useCachedImage(src: string | undefined) {
 
     // Check if image is already cached in browser
     const img = new Image();
-    
+
     const handleLoad = () => {
       if (!isCancelled) {
         setImageSrc(src);

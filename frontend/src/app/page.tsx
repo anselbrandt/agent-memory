@@ -65,7 +65,9 @@ export default function ChatPage() {
             if (result.migrated_conversations > 0) {
               // Refresh conversations list after migration
               await loadConversations();
-              console.log(`Successfully migrated ${result.migrated_conversations} conversations`);
+              console.log(
+                `Successfully migrated ${result.migrated_conversations} conversations`
+              );
             }
           } catch (error) {
             console.error("Migration failed:", error);
@@ -192,7 +194,7 @@ export default function ChatPage() {
     try {
       const formData = new FormData();
       formData.append("prompt", trimmedPrompt);
-      
+
       // Add attachments if they exist
       const formEvent = e as any;
       if (formEvent.attachments && formEvent.attachments.length > 0) {
