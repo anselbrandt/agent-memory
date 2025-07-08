@@ -16,7 +16,7 @@ from pydantic_ai.messages import (
     ModelMessagesTypeAdapter,
 )
 
-from app.models import ChatMessage, User, BusinessResponse, ConversationInfo
+from app.models import ChatMessage, ChatUser, BusinessResponse, ConversationInfo
 from app.config import Settings
 from app.facebook_models import FacebookCredentialsResponse
 
@@ -226,7 +226,7 @@ class Database(BaseModel):
                     messages.append(ChatMessage.model_validate(msg_dict))
             return messages
 
-    async def get_or_create_user(self, user_id: str, username: str) -> User:
+    async def get_or_create_user(self, user_id: str, username: str) -> ChatUser:
         """Get existing user or create new one, returning a User model."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -237,7 +237,7 @@ class Database(BaseModel):
             )
 
             if existing_user:
-                return User.model_validate(dict(existing_user))
+                return ChatUser.model_validate(dict(existing_user))
 
             # Create new user
             await connection.execute(
@@ -251,9 +251,9 @@ class Database(BaseModel):
                 "SELECT id, username, created_at, updated_at FROM users WHERE id = $1",
                 user_id,
             )
-            return User.model_validate(dict(new_user))
+            return ChatUser.model_validate(dict(new_user))
 
-    async def get_user(self, user_id: str) -> User | None:
+    async def get_user(self, user_id: str) -> ChatUser | None:
         """Get existing user details as a User model."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -262,7 +262,7 @@ class Database(BaseModel):
                 user_id,
             )
             if user:
-                return User.model_validate(dict(user))
+                return ChatUser.model_validate(dict(user))
             return None
 
     async def create_conversation(

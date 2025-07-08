@@ -32,7 +32,7 @@ import logfire
 
 from app.agents import chat_agent, topic_agent, ChatDependencies
 from app.config import Settings
-from app.db import Database, User
+from app.db import Database, ChatUser
 from app.auth_routes import auth_router
 from app.auth_service import auth_service
 from app.models import BusinessBase, BusinessResponse, ConversationInfo
@@ -152,7 +152,7 @@ def get_user_id_for_conversation(request: Request) -> tuple[str, bool]:
     return anonymous_id, True
 
 
-class ChatMessage(TypedDict):
+class BrowserMessage(TypedDict):
     """Format of messages sent to the browser."""
 
     role: Literal["user", "model"]
@@ -182,7 +182,7 @@ class Attachment(BaseModel):
     friendly_name: str
 
 
-def to_chat_message(m: ModelMessage) -> Optional[ChatMessage]:
+def to_chat_message(m: ModelMessage) -> Optional[BrowserMessage]:
     if isinstance(m, ModelRequest):
         for part in m.parts:
             if isinstance(part, UserPromptPart):
@@ -430,12 +430,12 @@ async def post_chat(
     return StreamingResponse(stream_messages(), media_type="text/plain")
 
 
-@app.get("/me", response_model=User)
+@app.get("/me", response_model=ChatUser)
 async def get_user_profile(
     request: Request,
     response: Response,
     database: Database = Depends(get_db),
-) -> User:
+) -> ChatUser:
     """Get the user's profile (authenticated or anonymous)."""
     user_id, is_authenticated = get_authenticated_user_id(request)
 
@@ -453,7 +453,7 @@ async def get_user_profile(
                     else "User"
                 )
 
-                return User(
+                return ChatUser(
                     id=user_data.get("id", ""),
                     username=first_name,
                     created_at=datetime.now(tz=timezone.utc),

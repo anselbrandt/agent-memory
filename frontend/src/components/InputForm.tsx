@@ -191,12 +191,6 @@ export default function InputForm({
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {image.file_type.startsWith("image/")
-                            ? "Image"
-                            : "Document"}{" "}
-                          {index + 1} ready to send
-                        </p>
                         <p className="text-xs text-gray-600">
                           {image.original_name || image.filename}
                         </p>

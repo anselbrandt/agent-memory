@@ -47,8 +47,8 @@ class ChatMessage(BaseModel):
     vendor_id: Optional[str] = None
 
 
-class User(BaseModel):
-    """User model for representing user data."""
+class ChatUser(BaseModel):
+    """User model for representing chat user data."""
 
     id: str
     username: str
@@ -137,7 +137,7 @@ class ConversationInfo(BaseModel):
 
 # Rebuild the models to resolve forward references
 ChatMessage.model_rebuild()
-User.model_rebuild()
+ChatUser.model_rebuild()
 UserResponse.model_rebuild()
 SessionResponse.model_rebuild()
 BusinessResponse.model_rebuild()

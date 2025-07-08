@@ -35,23 +35,6 @@ class GoogleUser(BaseModel):
         return v.strip()
 
 
-class FacebookUser(BaseModel):
-    """Facebook OAuth user response model."""
-
-    model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True)
-
-    id: str = Field(..., description="Facebook user ID")
-    email: EmailStr = Field(..., description="User email address")
-    name: str = Field(..., min_length=1, max_length=255, description="User full name")
-    picture: Optional[dict] = Field(None, description="Profile picture data")
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        """Validate user name."""
-        if not v or v.isspace():
-            raise ValueError("Name cannot be empty or whitespace")
-        return v.strip()
 
 
 class User(BaseModel):
