@@ -30,7 +30,7 @@ from typing_extensions import TypedDict
 import fastapi
 import logfire
 
-from app.agents import chat_agent, topic_agent, ChatDependencies
+from app.agents import chat_agent, topic_agent, BusinessInfo, ChatDependencies
 from app.config import Settings
 from app.db import Database, ChatUser
 from app.auth_routes import auth_router
@@ -328,6 +328,17 @@ async def post_chat(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
             )
 
+    # Fetch user's business information (only for authenticated users)
+    business_info = None
+    if not is_anonymous:
+        business_data = await database.get_user_business(user_id)
+        if business_data:
+            business_info = BusinessInfo(
+                name=business_data.name,
+                url=business_data.url,
+                description=business_data.description,
+            )
+
     # Parse and validate attachments if provided
     validated_attachments: List[Attachment] = []
     if attachments:
@@ -409,10 +420,11 @@ async def post_chat(
                 )
                 continue
 
-        # run the agent and stream output
+        # run the agent and stream output with business context
         current_date = date.today()
         date_string = current_date.strftime("%Y-%m-%d")
-        deps = ChatDependencies(todays_date=date_string)
+        deps = ChatDependencies(todays_date=date_string, business_info=business_info)
+
         async with chat_agent.run_stream(
             prompt_parts, message_history=messages, deps=deps
         ) as result:
