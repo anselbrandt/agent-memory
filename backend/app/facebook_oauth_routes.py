@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 from urllib.parse import urlencode
 import json
 
@@ -69,28 +69,35 @@ router = APIRouter(prefix="/facebook", tags=["facebook"])
 # Response Models
 class OAuthLoginResponse(BaseModel):
     """Response for OAuth login URL generation"""
+
     auth_url: str = Field(..., description="Facebook OAuth authorization URL")
 
 
 class SaveCredentialsResponse(BaseModel):
     """Response for saving credentials"""
+
     message: str = Field(..., description="Success message")
     credentials: dict = Field(..., description="Saved credentials data")
 
 
 class FacebookStatusResponse(BaseModel):
     """Response for Facebook connection status"""
+
     connected: bool = Field(..., description="Whether Facebook is connected")
-    facebook_data: Optional[dict] = Field(None, description="Facebook data if connected")
+    facebook_data: Optional[dict] = Field(
+        None, description="Facebook data if connected"
+    )
 
 
 class DisconnectResponse(BaseModel):
     """Response for disconnecting Facebook"""
+
     message: str = Field(..., description="Success message")
 
 
 class InstagramPostResponse(BaseModel):
     """Response for Instagram post creation"""
+
     success: bool = Field(..., description="Whether post was created successfully")
     creation_id: str = Field(..., description="Media creation ID")
     post_id: str = Field(..., description="Published post ID")
@@ -99,6 +106,7 @@ class InstagramPostResponse(BaseModel):
 
 class FacebookPostResponse(BaseModel):
     """Response for Facebook page post creation"""
+
     success: bool = Field(..., description="Whether post was created successfully")
     post_id: str = Field(..., description="Published post ID")
     message: str = Field(..., description="Success message")
@@ -348,14 +356,18 @@ async def delete_facebook_credentials(
 
 # Add the reference app endpoints that are missing
 @router.post("/save", response_model=SaveCredentialsResponse)
-async def save_facebook_data(request: Request, database: Database = Depends(get_db)) -> SaveCredentialsResponse:
+async def save_facebook_data(
+    request: Request, database: Database = Depends(get_db)
+) -> SaveCredentialsResponse:
     """Save Facebook data - alternative endpoint matching reference app"""
     # This is the same as save-credentials but with different URL
     return await save_facebook_credentials(request, database)
 
 
 @router.get("/status", response_model=FacebookStatusResponse)
-async def get_facebook_status(request: Request, database: Database = Depends(get_db)) -> FacebookStatusResponse:
+async def get_facebook_status(
+    request: Request, database: Database = Depends(get_db)
+) -> FacebookStatusResponse:
     """Get Facebook connection status and data"""
 
     user_id, is_authenticated = get_authenticated_user_id(request)
@@ -383,7 +395,9 @@ async def get_facebook_status(request: Request, database: Database = Depends(get
 
 
 @router.post("/disconnect", response_model=DisconnectResponse)
-async def disconnect_facebook(request: Request, database: Database = Depends(get_db)) -> DisconnectResponse:
+async def disconnect_facebook(
+    request: Request, database: Database = Depends(get_db)
+) -> DisconnectResponse:
     """Disconnect Facebook account"""
 
     user_id, is_authenticated = get_authenticated_user_id(request)
@@ -436,7 +450,9 @@ async def get_instagram_media(instagram_account_id: str, access_token: str):
 
 
 @router.post("/instagram/post", response_model=InstagramPostResponse)
-async def create_instagram_post(post_request: InstagramPostRequest) -> InstagramPostResponse:
+async def create_instagram_post(
+    post_request: InstagramPostRequest,
+) -> InstagramPostResponse:
     """Create a new Instagram post"""
     instagram_id = post_request.instagram_account_id
     access_token = post_request.access_token
@@ -576,7 +592,9 @@ async def get_facebook_page_posts(page_id: str, access_token: str):
 
 
 @router.post("/facebook/post", response_model=FacebookPostResponse)
-async def create_facebook_page_post(post_request: FacebookPagePostRequest) -> FacebookPostResponse:
+async def create_facebook_page_post(
+    post_request: FacebookPagePostRequest,
+) -> FacebookPostResponse:
     """Create a new Facebook page post"""
     page_id = post_request.page_id
     access_token = post_request.access_token

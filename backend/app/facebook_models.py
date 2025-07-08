@@ -114,3 +114,23 @@ class FacebookPagePostRequest(BaseModel):
     image_url: Optional[str] = Field(None, description="Image URL")
     message: str = Field(..., description="Post message")
     access_token: str = Field(..., description="Access token")
+
+
+# Response models
+class FacebookPostResponse(BaseModel):
+    """Model for Facebook post API responses."""
+
+    success: bool = Field(..., description="Whether the operation was successful")
+    post_id: Optional[str] = Field(None, description="Facebook post ID")
+    message: str = Field(..., description="Response message")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class InstagramPostResponse(BaseModel):
+    """Model for Instagram post API responses."""
+
+    success: bool = Field(..., description="Whether the operation was successful")
+    creation_id: Optional[str] = Field(None, description="Instagram media creation ID")
+    post_id: Optional[str] = Field(None, description="Instagram post ID")
+    message: str = Field(..., description="Response message")
+    error: Optional[str] = Field(None, description="Error message if failed")

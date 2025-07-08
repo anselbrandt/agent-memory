@@ -35,8 +35,6 @@ class GoogleUser(BaseModel):
         return v.strip()
 
 
-
-
 class User(BaseModel):
     """User model for application use."""
 
@@ -91,7 +89,9 @@ class AuthResponse(BaseModel):
     authenticated: bool = Field(..., description="Authentication status")
     user: Optional[User] = Field(None, description="User information")
     message: Optional[str] = Field(None, description="Response message")
-    migrate_conversations: bool = Field(default=True, description="Whether to migrate anonymous conversations")
+    migrate_conversations: bool = Field(
+        default=True, description="Whether to migrate anonymous conversations"
+    )
 
 
 class SessionData(BaseModel):

@@ -12,6 +12,7 @@ from app.config import Settings
 
 class ImageProcessResult(BaseModel):
     """Result of image processing operation."""
+
     local_path: str
     filename: str
     s3_url: Optional[str] = None
@@ -21,7 +22,9 @@ class ImageProcessResult(BaseModel):
 class ImageService:
     def __init__(self, settings: Optional[Settings] = None):
         self.settings = settings or Settings()
-        self.upload_url = f"{self.settings.s3_url}/upload" if self.settings.s3_url else None
+        self.upload_url = (
+            f"{self.settings.s3_url}/upload" if self.settings.s3_url else None
+        )
         self.local_image_dir = Path("temp_images")
         self.local_image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -87,8 +90,7 @@ class ImageService:
             local_path = await self.save_uploaded_file(file)
 
             result = ImageProcessResult(
-                local_path=str(local_path),
-                filename=local_path.name
+                local_path=str(local_path), filename=local_path.name
             )
 
             # Try to upload to S3 if configured

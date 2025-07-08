@@ -160,8 +160,6 @@ class BrowserMessage(TypedDict):
     content: str
 
 
-
-
 class NewConversationResponse(BaseModel):
     """Response for creating a new conversation."""
 

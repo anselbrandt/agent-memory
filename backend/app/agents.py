@@ -28,7 +28,7 @@ def create_chat_agent():
     tools = []
     if settings.tavily_api_key:
         tools.append(tavily_search_tool(api_key=settings.tavily_api_key))
-    
+
     return Agent(
         model=f"openai:{settings.default_model}",
         tools=tools,

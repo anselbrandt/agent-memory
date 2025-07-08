@@ -282,7 +282,9 @@ class Database(BaseModel):
             )
             return conversation_id
 
-    async def get_user_conversations(self, user_id: str, limit: int = 50) -> List[ConversationInfo]:
+    async def get_user_conversations(
+        self, user_id: str, limit: int = 50
+    ) -> List[ConversationInfo]:
         """Get all conversations for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -367,7 +369,7 @@ class Database(BaseModel):
         """Transfer all conversations from one user to another (e.g., anonymous to authenticated)."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
-            
+
             # Update conversations to new user_id
             result = await connection.execute(
                 """
@@ -378,9 +380,11 @@ class Database(BaseModel):
                 to_user_id,
                 from_user_id,
             )
-            
+
             # Extract the number of affected rows
-            rows_affected = int(result.split()[-1]) if result.startswith("UPDATE") else 0
+            rows_affected = (
+                int(result.split()[-1]) if result.startswith("UPDATE") else 0
+            )
             return rows_affected
 
     async def get_conversation_owner(self, conversation_id: str) -> Optional[str]:
@@ -409,15 +413,14 @@ class Database(BaseModel):
             )
             return result == "UPDATE 1"
 
-    async def user_owns_conversation(
-        self, conversation_id: str, user_id: str
-    ) -> bool:
+    async def user_owns_conversation(self, conversation_id: str, user_id: str) -> bool:
         """Check if a user owns a specific conversation."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
             row = await connection.fetchrow(
-                "SELECT 1 FROM conversations WHERE id = $1 AND user_id = $2", 
-                conversation_id, user_id
+                "SELECT 1 FROM conversations WHERE id = $1 AND user_id = $2",
+                conversation_id,
+                user_id,
             )
             return row is not None
 
@@ -442,12 +445,12 @@ class Database(BaseModel):
         """Create or update business information for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
-            
+
             # Check if business already exists
             existing = await connection.fetchrow(
                 "SELECT id FROM businesses WHERE user_id = $1", user_id
             )
-            
+
             if existing:
                 # Update existing business
                 row = await connection.fetchrow(
@@ -457,7 +460,10 @@ class Database(BaseModel):
                     WHERE user_id = $1
                     RETURNING id, user_id, name, url, description, created_at, updated_at
                     """,
-                    user_id, name, url, description
+                    user_id,
+                    name,
+                    url,
+                    description,
                 )
             else:
                 # Create new business
@@ -467,9 +473,12 @@ class Database(BaseModel):
                     VALUES ($1, $2, $3, $4)
                     RETURNING id, user_id, name, url, description, created_at, updated_at
                     """,
-                    user_id, name, url, description
+                    user_id,
+                    name,
+                    url,
+                    description,
                 )
-            
+
             return BusinessResponse(**dict(row))
 
     async def delete_user_business(self, user_id: str) -> bool:
@@ -482,7 +491,9 @@ class Database(BaseModel):
             return result == "DELETE 1"
 
     # Facebook credentials methods
-    async def get_facebook_credentials(self, user_id: str) -> Optional[FacebookCredentialsResponse]:
+    async def get_facebook_credentials(
+        self, user_id: str
+    ) -> Optional[FacebookCredentialsResponse]:
         """Get Facebook credentials for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -499,27 +510,34 @@ class Database(BaseModel):
             if row:
                 # Parse JSON data
                 row_dict = dict(row)
-                if row_dict.get('pages_data'):
-                    row_dict['pages_data'] = json.loads(row_dict['pages_data'])
-                if row_dict.get('instagram_accounts_data'):
-                    row_dict['instagram_accounts_data'] = json.loads(row_dict['instagram_accounts_data'])
+                if row_dict.get("pages_data"):
+                    row_dict["pages_data"] = json.loads(row_dict["pages_data"])
+                if row_dict.get("instagram_accounts_data"):
+                    row_dict["instagram_accounts_data"] = json.loads(
+                        row_dict["instagram_accounts_data"]
+                    )
                 return FacebookCredentialsResponse(**row_dict)
             return None
 
     async def create_or_update_facebook_credentials(
-        self, user_id: str, facebook_user_id: str, facebook_user_name: str,
-        facebook_user_email: Optional[str], access_token: str, 
-        pages_data: Optional[str] = None, instagram_accounts_data: Optional[str] = None
+        self,
+        user_id: str,
+        facebook_user_id: str,
+        facebook_user_name: str,
+        facebook_user_email: Optional[str],
+        access_token: str,
+        pages_data: Optional[str] = None,
+        instagram_accounts_data: Optional[str] = None,
     ) -> FacebookCredentialsResponse:
         """Create or update Facebook credentials for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
-            
+
             # Check if credentials already exist
             existing = await connection.fetchrow(
                 "SELECT id FROM facebook_credentials WHERE user_id = $1", user_id
             )
-            
+
             if existing:
                 # Update existing credentials
                 row = await connection.fetchrow(
@@ -533,8 +551,13 @@ class Database(BaseModel):
                               facebook_user_email, access_token, pages_data, 
                               instagram_accounts_data, created_at, updated_at
                     """,
-                    user_id, facebook_user_id, facebook_user_name, facebook_user_email,
-                    access_token, pages_data, instagram_accounts_data
+                    user_id,
+                    facebook_user_id,
+                    facebook_user_name,
+                    facebook_user_email,
+                    access_token,
+                    pages_data,
+                    instagram_accounts_data,
                 )
             else:
                 # Create new credentials
@@ -548,16 +571,23 @@ class Database(BaseModel):
                               facebook_user_email, access_token, pages_data, 
                               instagram_accounts_data, created_at, updated_at
                     """,
-                    user_id, facebook_user_id, facebook_user_name, facebook_user_email,
-                    access_token, pages_data, instagram_accounts_data
+                    user_id,
+                    facebook_user_id,
+                    facebook_user_name,
+                    facebook_user_email,
+                    access_token,
+                    pages_data,
+                    instagram_accounts_data,
                 )
-            
+
             # Parse JSON data
             row_dict = dict(row)
-            if row_dict.get('pages_data'):
-                row_dict['pages_data'] = json.loads(row_dict['pages_data'])
-            if row_dict.get('instagram_accounts_data'):
-                row_dict['instagram_accounts_data'] = json.loads(row_dict['instagram_accounts_data'])
+            if row_dict.get("pages_data"):
+                row_dict["pages_data"] = json.loads(row_dict["pages_data"])
+            if row_dict.get("instagram_accounts_data"):
+                row_dict["instagram_accounts_data"] = json.loads(
+                    row_dict["instagram_accounts_data"]
+                )
             return FacebookCredentialsResponse(**row_dict)
 
     async def delete_facebook_credentials(self, user_id: str) -> bool:

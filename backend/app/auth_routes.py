@@ -95,10 +95,18 @@ async def login(
             max_age=settings.session_expires_days * 24 * 60 * 60,
         )
 
-        return AuthResponse(authenticated=True, user=user, message="Login successful", migrate_conversations=True)
+        return AuthResponse(
+            authenticated=True,
+            user=user,
+            message="Login successful",
+            migrate_conversations=True,
+        )
     except Exception as e:
         return AuthResponse(
-            authenticated=False, user=None, message=f"Login failed: {str(e)}", migrate_conversations=False
+            authenticated=False,
+            user=None,
+            message=f"Login failed: {str(e)}",
+            migrate_conversations=False,
         )
 
 

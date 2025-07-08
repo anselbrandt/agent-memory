@@ -101,6 +101,7 @@ class SessionResponse(SessionBase):
     def is_expired(self) -> bool:
         """Check if session is expired."""
         from datetime import timezone
+
         return datetime.now(timezone.utc) > self.expires_at
 
 

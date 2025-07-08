@@ -1,10 +1,19 @@
 import httpx
 
-from app.facebook_models import FacebookPagePostRequest, InstagramPostRequest
+from app.facebook_models import (
+    FacebookPagePostRequest,
+    InstagramPostRequest,
+    FacebookPostResponse,
+    InstagramPostResponse,
+)
 
 
-async def post_image_to_facebook(facebook_post_request: FacebookPagePostRequest):
-    post_url = f"https://graph.facebook.com/v23.0/{FACEBOOK_PAGE_ID}/photos"
+async def post_image_to_facebook(
+    facebook_post_request: FacebookPagePostRequest,
+) -> FacebookPostResponse:
+    post_url = (
+        f"https://graph.facebook.com/v23.0/{facebook_post_request.page_id}/photos"
+    )
     post_params = {
         "access_token": facebook_post_request.access_token,
         "url": facebook_post_request.image_url,
@@ -20,21 +29,31 @@ async def post_image_to_facebook(facebook_post_request: FacebookPagePostRequest)
             post_response.raise_for_status()
             post_data = post_response.json()
 
-            print(
-                {
-                    "success": True,
-                    "post_id": post_data.get("id"),
-                    "message": "Facebook post created successfully",
-                }
+            return FacebookPostResponse(
+                success=True,
+                post_id=post_data.get("id"),
+                message="Facebook post created successfully",
             )
 
         except httpx.HTTPStatusError as e:
-            print(f"Facebook API error: {e.response.status_code} - {e.response.text}")
+            error_msg = (
+                f"Facebook API error: {e.response.status_code} - {e.response.text}"
+            )
+            print(error_msg)
+            return FacebookPostResponse(
+                success=False, message="Failed to create Facebook post", error=error_msg
+            )
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
+            error_msg = f"Unexpected error: {str(e)}"
+            print(error_msg)
+            return FacebookPostResponse(
+                success=False, message="Failed to create Facebook post", error=error_msg
+            )
 
 
-async def post_text_to_facebook(facebook_post_request: FacebookPagePostRequest):
+async def post_text_to_facebook(
+    facebook_post_request: FacebookPagePostRequest,
+) -> FacebookPostResponse:
     post_url = f"https://graph.facebook.com/v23.0/{facebook_post_request.page_id}/feed"
     post_params = {
         "access_token": facebook_post_request.access_token,
@@ -50,21 +69,31 @@ async def post_text_to_facebook(facebook_post_request: FacebookPagePostRequest):
             post_response.raise_for_status()
             post_data = post_response.json()
 
-            print(
-                {
-                    "success": True,
-                    "post_id": post_data.get("id"),
-                    "message": "Facebook post created successfully",
-                }
+            return FacebookPostResponse(
+                success=True,
+                post_id=post_data.get("id"),
+                message="Facebook post created successfully",
             )
 
         except httpx.HTTPStatusError as e:
-            print(f"Facebook API error: {e.response.status_code} - {e.response.text}")
+            error_msg = (
+                f"Facebook API error: {e.response.status_code} - {e.response.text}"
+            )
+            print(error_msg)
+            return FacebookPostResponse(
+                success=False, message="Failed to create Facebook post", error=error_msg
+            )
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
+            error_msg = f"Unexpected error: {str(e)}"
+            print(error_msg)
+            return FacebookPostResponse(
+                success=False, message="Failed to create Facebook post", error=error_msg
+            )
 
 
-async def post_image_to_instagram(instagram_post_request: InstagramPostRequest):
+async def post_image_to_instagram(
+    instagram_post_request: InstagramPostRequest,
+) -> InstagramPostResponse:
 
     create_url = f"https://graph.facebook.com/v23.0/{instagram_post_request.instagram_account_id}/media"
     publish_url = f"https://graph.facebook.com/v23.0/{instagram_post_request.instagram_account_id}/media_publish"
@@ -86,9 +115,11 @@ async def post_image_to_instagram(instagram_post_request: InstagramPostRequest):
 
             creation_id = create_data.get("id")
             if not creation_id:
-                raise httpx.HTTPStatusError(
-                    status_code=400,
-                    detail="No creation ID returned from Instagram API",
+                error_msg = "No creation ID returned from Instagram API"
+                return InstagramPostResponse(
+                    success=False,
+                    message="Failed to create Instagram post",
+                    error=error_msg,
                 )
 
             publish_params = {
@@ -103,14 +134,28 @@ async def post_image_to_instagram(instagram_post_request: InstagramPostRequest):
             publish_response.raise_for_status()
             publish_data = publish_response.json()
 
-            return {
-                "success": True,
-                "creation_id": creation_id,
-                "post_id": publish_data.get("id"),
-                "message": "Post created successfully",
-            }
+            return InstagramPostResponse(
+                success=True,
+                creation_id=creation_id,
+                post_id=publish_data.get("id"),
+                message="Post created successfully",
+            )
 
         except httpx.HTTPStatusError as e:
-            print(f"Facebook API error: {e.response.status_code} - {e.response.text}")
+            error_msg = (
+                f"Instagram API error: {e.response.status_code} - {e.response.text}"
+            )
+            print(error_msg)
+            return InstagramPostResponse(
+                success=False,
+                message="Failed to create Instagram post",
+                error=error_msg,
+            )
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
+            error_msg = f"Unexpected error: {str(e)}"
+            print(error_msg)
+            return InstagramPostResponse(
+                success=False,
+                message="Failed to create Instagram post",
+                error=error_msg,
+            )
