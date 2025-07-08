@@ -9,9 +9,15 @@ import httpx
 from app.config import Settings
 from app.db import Database
 from app.facebook_models import (
-    FacebookUser, FacebookPage, InstagramBusinessAccount, UserData,
-    InstagramPostRequest, FacebookPagePostRequest, FacebookCredentialsResponse
+    FacebookUser,
+    FacebookPage,
+    InstagramBusinessAccount,
+    UserData,
+    InstagramPostRequest,
+    FacebookPagePostRequest,
+    FacebookCredentialsResponse,
 )
+from pydantic import BaseModel, Field
 
 settings = Settings()
 
@@ -23,7 +29,7 @@ async def get_db(request: Request) -> Database:
 
 def get_authenticated_user_id(request: Request) -> tuple[str, bool]:
     """Get the authenticated user ID from session.
-    
+
     Returns:
         tuple: (user_id, is_authenticated) - user_id and whether they're actually authenticated
     """
@@ -60,9 +66,47 @@ INSTAGRAM_BUSINESS_URL = "https://graph.facebook.com/v23.0/{}/instagram_accounts
 router = APIRouter(prefix="/facebook", tags=["facebook"])
 
 
+# Response Models
+class OAuthLoginResponse(BaseModel):
+    """Response for OAuth login URL generation"""
+    auth_url: str = Field(..., description="Facebook OAuth authorization URL")
+
+
+class SaveCredentialsResponse(BaseModel):
+    """Response for saving credentials"""
+    message: str = Field(..., description="Success message")
+    credentials: dict = Field(..., description="Saved credentials data")
+
+
+class FacebookStatusResponse(BaseModel):
+    """Response for Facebook connection status"""
+    connected: bool = Field(..., description="Whether Facebook is connected")
+    facebook_data: Optional[dict] = Field(None, description="Facebook data if connected")
+
+
+class DisconnectResponse(BaseModel):
+    """Response for disconnecting Facebook"""
+    message: str = Field(..., description="Success message")
+
+
+class InstagramPostResponse(BaseModel):
+    """Response for Instagram post creation"""
+    success: bool = Field(..., description="Whether post was created successfully")
+    creation_id: str = Field(..., description="Media creation ID")
+    post_id: str = Field(..., description="Published post ID")
+    message: str = Field(..., description="Success message")
+
+
+class FacebookPostResponse(BaseModel):
+    """Response for Facebook page post creation"""
+    success: bool = Field(..., description="Whether post was created successfully")
+    post_id: str = Field(..., description="Published post ID")
+    message: str = Field(..., description="Success message")
+
+
 # OAuth Endpoints
-@router.get("/login")
-def facebook_login():
+@router.get("/login", response_model=OAuthLoginResponse)
+def facebook_login() -> OAuthLoginResponse:
     """Generate Facebook OAuth login URL for Instagram Business access"""
 
     # Check if Facebook credentials are configured
@@ -93,15 +137,15 @@ def facebook_login():
     }
 
     auth_url = f"{FACEBOOK_OAUTH_URL}?{urlencode(params)}"
-    return {"auth_url": auth_url}
+    return OAuthLoginResponse(auth_url=auth_url)
 
 
 @router.get("/callback")
 async def facebook_callback(
-    code: str, 
+    code: str,
     state: Optional[str] = None,
     request: Request = None,
-    database: Database = Depends(get_db)
+    database: Database = Depends(get_db),
 ):
     """Handle Facebook OAuth callback and get Instagram Business accounts"""
 
@@ -202,7 +246,7 @@ async def facebook_callback(
         # We'll need to modify the save endpoint to handle this
         user_data_with_token = {
             **user_data.model_dump(),
-            "access_token": access_token  # Store the main access token
+            "access_token": access_token,  # Store the main access token
         }
 
         # Return HTML response that sends user data to parent window
@@ -227,186 +271,164 @@ async def facebook_callback(
         )
 
 
-@router.post("/save-credentials")
+@router.post("/save-credentials", response_model=SaveCredentialsResponse)
 async def save_facebook_credentials(
-    request: Request,
-    database: Database = Depends(get_db)
-):
+    request: Request, database: Database = Depends(get_db)
+) -> SaveCredentialsResponse:
     """Save Facebook credentials to database for authenticated user"""
-    
+
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required"
-        )
-    
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     try:
         # Get raw JSON data that includes access_token
         body = await request.json()
-        
-        facebook_user = body.get('facebook_user', {})
-        access_token = body.get('access_token', '')
-        pages = body.get('pages', [])
-        instagram_accounts = body.get('instagram_accounts', [])
-        
+
+        facebook_user = body.get("facebook_user", {})
+        access_token = body.get("access_token", "")
+        pages = body.get("pages", [])
+        instagram_accounts = body.get("instagram_accounts", [])
+
         # Save credentials to database with actual access token
         credentials_data = await database.create_or_update_facebook_credentials(
             user_id=user_id,
-            facebook_user_id=facebook_user.get('id'),
-            facebook_user_name=facebook_user.get('name'),
-            facebook_user_email=facebook_user.get('email'),
+            facebook_user_id=facebook_user.get("id"),
+            facebook_user_name=facebook_user.get("name"),
+            facebook_user_email=facebook_user.get("email"),
             access_token=access_token,  # Store the actual access token
             pages_data=json.dumps(pages),
-            instagram_accounts_data=json.dumps(instagram_accounts)
+            instagram_accounts_data=json.dumps(instagram_accounts),
         )
-        
-        return {"message": "Facebook credentials saved successfully", "credentials": credentials_data}
-        
+
+        return SaveCredentialsResponse(
+            message="Facebook credentials saved successfully",
+            credentials=credentials_data,
+        )
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to save credentials: {str(e)}"
+            status_code=500, detail=f"Failed to save credentials: {str(e)}"
         )
 
 
-@router.get("/credentials")
+@router.get("/credentials", response_model=Optional[FacebookCredentialsResponse])
 async def get_facebook_credentials(
-    request: Request,
-    database: Database = Depends(get_db)
-):
+    request: Request, database: Database = Depends(get_db)
+) -> Optional[FacebookCredentialsResponse]:
     """Get Facebook credentials for authenticated user"""
-    
+
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required"
-        )
-    
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     credentials = await database.get_facebook_credentials(user_id)
     if not credentials:
         return None
-    
+
     # Parse JSON data
-    pages_data = json.loads(credentials["pages_data"]) if credentials["pages_data"] else []
-    instagram_accounts_data = json.loads(credentials["instagram_accounts_data"]) if credentials["instagram_accounts_data"] else []
-    
-    return {
-        "id": credentials["id"],
-        "user_id": credentials["user_id"],
-        "facebook_user_id": credentials["facebook_user_id"],
-        "facebook_user_name": credentials["facebook_user_name"],
-        "facebook_user_email": credentials["facebook_user_email"],
-        "access_token": credentials["access_token"],  # Add the missing access token
-        "pages_data": pages_data,
-        "instagram_accounts_data": instagram_accounts_data,
-        "created_at": credentials["created_at"],
-        "updated_at": credentials["updated_at"]
-    }
+    pages_data = (
+        json.loads(credentials["pages_data"]) if credentials["pages_data"] else []
+    )
+    instagram_accounts_data = (
+        json.loads(credentials["instagram_accounts_data"])
+        if credentials["instagram_accounts_data"]
+        else []
+    )
+
+    return FacebookCredentialsResponse(
+        id=credentials["id"],
+        user_id=credentials["user_id"],
+        facebook_user_id=credentials["facebook_user_id"],
+        facebook_user_name=credentials["facebook_user_name"],
+        facebook_user_email=credentials["facebook_user_email"],
+        access_token=credentials["access_token"],
+        pages_data=pages_data,
+        instagram_accounts_data=instagram_accounts_data,
+        created_at=credentials["created_at"],
+        updated_at=credentials["updated_at"],
+    )
 
 
-@router.delete("/credentials")
+@router.delete("/credentials", response_model=DisconnectResponse)
 async def delete_facebook_credentials(
-    request: Request,
-    database: Database = Depends(get_db)
-):
+    request: Request, database: Database = Depends(get_db)
+) -> DisconnectResponse:
     """Delete Facebook credentials for authenticated user"""
-    
+
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required"
-        )
-    
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     success = await database.delete_facebook_credentials(user_id)
     if success:
-        return {"message": "Facebook credentials deleted successfully"}
+        return DisconnectResponse(message="Facebook credentials deleted successfully")
     else:
-        raise HTTPException(
-            status_code=404,
-            detail="No Facebook credentials found"
-        )
+        raise HTTPException(status_code=404, detail="No Facebook credentials found")
 
 
 # Add the reference app endpoints that are missing
-@router.post("/save")
-async def save_facebook_data(
-    request: Request,
-    database: Database = Depends(get_db)
-):
+@router.post("/save", response_model=SaveCredentialsResponse)
+async def save_facebook_data(request: Request, database: Database = Depends(get_db)) -> SaveCredentialsResponse:
     """Save Facebook data - alternative endpoint matching reference app"""
     # This is the same as save-credentials but with different URL
     return await save_facebook_credentials(request, database)
 
 
-@router.get("/status")
-async def get_facebook_status(
-    request: Request,
-    database: Database = Depends(get_db)
-):
+@router.get("/status", response_model=FacebookStatusResponse)
+async def get_facebook_status(request: Request, database: Database = Depends(get_db)) -> FacebookStatusResponse:
     """Get Facebook connection status and data"""
-    
+
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required"
-        )
-    
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     credentials = await database.get_facebook_credentials(user_id)
-    
+
     if not credentials:
-        return {"connected": False}
-    
+        return FacebookStatusResponse(connected=False)
+
     # Parse JSON data and return in format expected by reference app
-    pages_data = json.loads(credentials["pages_data"]) if credentials["pages_data"] else []
-    instagram_accounts_data = json.loads(credentials["instagram_accounts_data"]) if credentials["instagram_accounts_data"] else []
-    
+    pages_data = (
+        json.loads(credentials["pages_data"]) if credentials["pages_data"] else []
+    )
+    instagram_accounts_data = (
+        json.loads(credentials["instagram_accounts_data"])
+        if credentials["instagram_accounts_data"]
+        else []
+    )
+
     facebook_data = {
         "facebook_user": {
             "id": credentials["facebook_user_id"],
             "name": credentials["facebook_user_name"],
-            "email": credentials["facebook_user_email"]
+            "email": credentials["facebook_user_email"],
         },
         "pages": pages_data,
-        "instagram_accounts": instagram_accounts_data
-    }
-    
-    return {
-        "connected": True,
-        "facebook_data": facebook_data
+        "instagram_accounts": instagram_accounts_data,
     }
 
+    return FacebookStatusResponse(connected=True, facebook_data=facebook_data)
 
-@router.post("/disconnect")
-async def disconnect_facebook(
-    request: Request,
-    database: Database = Depends(get_db)
-):
+
+@router.post("/disconnect", response_model=DisconnectResponse)
+async def disconnect_facebook(request: Request, database: Database = Depends(get_db)) -> DisconnectResponse:
     """Disconnect Facebook account"""
-    
+
     user_id, is_authenticated = get_authenticated_user_id(request)
-    
+
     if not is_authenticated:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required"
-        )
-    
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     success = await database.delete_facebook_credentials(user_id)
     if success:
-        return {"message": "Facebook account disconnected successfully"}
+        return DisconnectResponse(message="Facebook account disconnected successfully")
     else:
-        raise HTTPException(
-            status_code=404,
-            detail="No Facebook credentials found"
-        )
+        raise HTTPException(status_code=404, detail="No Facebook credentials found")
 
 
 # Instagram API endpoints
@@ -446,8 +468,8 @@ async def get_instagram_media(instagram_account_id: str, access_token: str):
         return media_response.json()
 
 
-@router.post("/instagram/post")
-async def create_instagram_post(post_request: InstagramPostRequest):
+@router.post("/instagram/post", response_model=InstagramPostResponse)
+async def create_instagram_post(post_request: InstagramPostRequest) -> InstagramPostResponse:
     """Create a new Instagram post"""
     instagram_id = post_request.instagram_account_id
     access_token = post_request.access_token
@@ -493,12 +515,12 @@ async def create_instagram_post(post_request: InstagramPostRequest):
             publish_response.raise_for_status()
             publish_data = publish_response.json()
 
-            return {
-                "success": True,
-                "creation_id": creation_id,
-                "post_id": publish_data.get("id"),
-                "message": "Post created successfully",
-            }
+            return InstagramPostResponse(
+                success=True,
+                creation_id=creation_id,
+                post_id=publish_data.get("id"),
+                message="Post created successfully",
+            )
 
         except httpx.HTTPStatusError as e:
             error_detail = (
@@ -586,8 +608,8 @@ async def get_facebook_page_posts(page_id: str, access_token: str):
         return posts_response.json()
 
 
-@router.post("/facebook/post")
-async def create_facebook_page_post(post_request: FacebookPagePostRequest):
+@router.post("/facebook/post", response_model=FacebookPostResponse)
+async def create_facebook_page_post(post_request: FacebookPagePostRequest) -> FacebookPostResponse:
     """Create a new Facebook page post"""
     page_id = post_request.page_id
     access_token = post_request.access_token
@@ -621,11 +643,11 @@ async def create_facebook_page_post(post_request: FacebookPagePostRequest):
             post_response.raise_for_status()
             post_data = post_response.json()
 
-            return {
-                "success": True,
-                "post_id": post_data.get("id"),
-                "message": "Facebook post created successfully",
-            }
+            return FacebookPostResponse(
+                success=True,
+                post_id=post_data.get("id"),
+                message="Facebook post created successfully",
+            )
 
         except httpx.HTTPStatusError as e:
             error_detail = (
