@@ -35,7 +35,7 @@ from app.config import Settings
 from app.db import Database, User
 from app.auth_routes import auth_router
 from app.auth_service import auth_service
-from app.models import BusinessBase, BusinessResponse
+from app.models import BusinessBase, BusinessResponse, ConversationInfo
 from app.facebook_oauth_routes import router as facebook_router
 from app.upload_routes import router as upload_router
 
@@ -160,14 +160,6 @@ class ChatMessage(TypedDict):
     content: str
 
 
-class ConversationInfo(BaseModel):
-    """Information about a conversation."""
-
-    id: str
-    title: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-    message_count: int
 
 
 class NewConversationResponse(BaseModel):
@@ -237,9 +229,8 @@ async def get_conversations(
     await ensure_anonymous_user_exists(database, user_id, is_anonymous)
 
     conversations = await database.get_user_conversations(user_id)
-    # Convert dict rows to ConversationInfo objects
-    conversation_objects = [ConversationInfo(**conv) for conv in conversations]
-    return ConversationsResponse(conversations=conversation_objects)
+    # conversations already returns List[ConversationInfo]
+    return ConversationsResponse(conversations=conversations)
 
 
 @app.get("/chat/{conversation_id}")
@@ -500,9 +491,7 @@ async def get_business(
         )
 
     business_data = await database.get_user_business(user_id)
-    if business_data:
-        return BusinessResponse(**business_data)
-    return None
+    return business_data
 
 
 @app.post("/business", response_model=BusinessResponse)
@@ -526,7 +515,7 @@ async def create_or_update_business(
         description=business.description,
     )
 
-    return BusinessResponse(**business_data)
+    return business_data
 
 
 @app.delete("/business")

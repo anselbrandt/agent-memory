@@ -16,7 +16,7 @@ from pydantic_ai.messages import (
     ModelMessagesTypeAdapter,
 )
 
-from app.models import ChatMessage, User
+from app.models import ChatMessage, User, BusinessResponse, ConversationInfo
 from app.config import Settings
 from app.facebook_models import FacebookCredentialsResponse
 
@@ -282,7 +282,7 @@ class Database(BaseModel):
             )
             return conversation_id
 
-    async def get_user_conversations(self, user_id: str, limit: int = 50) -> List[Dict]:
+    async def get_user_conversations(self, user_id: str, limit: int = 50) -> List[ConversationInfo]:
         """Get all conversations for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -299,7 +299,7 @@ class Database(BaseModel):
                 limit,
             )
 
-            return [dict(row) for row in rows]
+            return [ConversationInfo(**dict(row)) for row in rows]
 
     async def get_conversation_messages(
         self, conversation_id: str
@@ -422,7 +422,7 @@ class Database(BaseModel):
             return row is not None
 
     # Business-related methods
-    async def get_user_business(self, user_id: str) -> Optional[Dict]:
+    async def get_user_business(self, user_id: str) -> Optional[BusinessResponse]:
         """Get business information for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -434,11 +434,11 @@ class Database(BaseModel):
                 """,
                 user_id,
             )
-            return dict(row) if row else None
+            return BusinessResponse(**dict(row)) if row else None
 
     async def create_or_update_business(
         self, user_id: str, name: str, url: str, description: str
-    ) -> Dict:
+    ) -> BusinessResponse:
         """Create or update business information for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -470,7 +470,7 @@ class Database(BaseModel):
                     user_id, name, url, description
                 )
             
-            return dict(row)
+            return BusinessResponse(**dict(row))
 
     async def delete_user_business(self, user_id: str) -> bool:
         """Delete business information for a user."""

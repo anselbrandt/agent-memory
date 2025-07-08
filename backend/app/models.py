@@ -118,9 +118,21 @@ class BusinessResponse(BusinessBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(..., description="Business ID")
-    user_id: int = Field(..., description="User ID")
+    user_id: str = Field(..., description="User ID")
     created_at: datetime = Field(..., description="Business creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
+
+
+class ConversationInfo(BaseModel):
+    """Model for conversation information."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str = Field(..., description="Conversation ID")
+    title: Optional[str] = Field(None, description="Conversation title")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    message_count: int = Field(..., description="Number of messages in conversation")
 
 
 # Rebuild the models to resolve forward references
@@ -129,3 +141,4 @@ User.model_rebuild()
 UserResponse.model_rebuild()
 SessionResponse.model_rebuild()
 BusinessResponse.model_rebuild()
+ConversationInfo.model_rebuild()
