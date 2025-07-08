@@ -103,7 +103,6 @@ export default function FacebookLogin({ authenticated }: FacebookLoginProps) {
       );
       if (response.ok) {
         const credentials = await response.json();
-        console.log({ credentials });
         setFullCredentials(credentials);
       }
     } catch (error) {
@@ -125,8 +124,6 @@ export default function FacebookLogin({ authenticated }: FacebookLoginProps) {
         console.log("Facebook status data:", data);
         if (data.connected) {
           setIsConnected(true);
-          const facebook_data = data.facebook_data;
-          console.log(facebook_data);
           setFacebookData(data.facebook_data);
           setConnectionStatus("connected");
           // Load full credentials including tokens
