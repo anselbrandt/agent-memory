@@ -3,6 +3,7 @@ from __future__ import annotations as _annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict
+import json
 
 import asyncpg
 import logfire
@@ -17,6 +18,7 @@ from pydantic_ai.messages import (
 
 from app.models import ChatMessage, User
 from app.config import Settings
+from app.facebook_models import FacebookCredentialsResponse
 
 settings = Settings()
 
@@ -480,7 +482,7 @@ class Database(BaseModel):
             return result == "DELETE 1"
 
     # Facebook credentials methods
-    async def get_facebook_credentials(self, user_id: str) -> Optional[Dict]:
+    async def get_facebook_credentials(self, user_id: str) -> Optional[FacebookCredentialsResponse]:
         """Get Facebook credentials for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -494,13 +496,21 @@ class Database(BaseModel):
                 """,
                 user_id,
             )
-            return dict(row) if row else None
+            if row:
+                # Parse JSON data
+                row_dict = dict(row)
+                if row_dict.get('pages_data'):
+                    row_dict['pages_data'] = json.loads(row_dict['pages_data'])
+                if row_dict.get('instagram_accounts_data'):
+                    row_dict['instagram_accounts_data'] = json.loads(row_dict['instagram_accounts_data'])
+                return FacebookCredentialsResponse(**row_dict)
+            return None
 
     async def create_or_update_facebook_credentials(
         self, user_id: str, facebook_user_id: str, facebook_user_name: str,
         facebook_user_email: Optional[str], access_token: str, 
         pages_data: Optional[str] = None, instagram_accounts_data: Optional[str] = None
-    ) -> Dict:
+    ) -> FacebookCredentialsResponse:
         """Create or update Facebook credentials for a user."""
         async with self.pool.acquire() as connection:
             connection: asyncpg.Connection
@@ -542,7 +552,13 @@ class Database(BaseModel):
                     access_token, pages_data, instagram_accounts_data
                 )
             
-            return dict(row)
+            # Parse JSON data
+            row_dict = dict(row)
+            if row_dict.get('pages_data'):
+                row_dict['pages_data'] = json.loads(row_dict['pages_data'])
+            if row_dict.get('instagram_accounts_data'):
+                row_dict['instagram_accounts_data'] = json.loads(row_dict['instagram_accounts_data'])
+            return FacebookCredentialsResponse(**row_dict)
 
     async def delete_facebook_credentials(self, user_id: str) -> bool:
         """Delete Facebook credentials for a user."""

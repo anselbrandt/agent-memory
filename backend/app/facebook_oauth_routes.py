@@ -304,7 +304,7 @@ async def save_facebook_credentials(
 
         return SaveCredentialsResponse(
             message="Facebook credentials saved successfully",
-            credentials=credentials_data,
+            credentials=credentials_data.model_dump(),
         )
 
     except Exception as e:
@@ -325,31 +325,7 @@ async def get_facebook_credentials(
         raise HTTPException(status_code=401, detail="Authentication required")
 
     credentials = await database.get_facebook_credentials(user_id)
-    if not credentials:
-        return None
-
-    # Parse JSON data
-    pages_data = (
-        json.loads(credentials["pages_data"]) if credentials["pages_data"] else []
-    )
-    instagram_accounts_data = (
-        json.loads(credentials["instagram_accounts_data"])
-        if credentials["instagram_accounts_data"]
-        else []
-    )
-
-    return FacebookCredentialsResponse(
-        id=credentials["id"],
-        user_id=credentials["user_id"],
-        facebook_user_id=credentials["facebook_user_id"],
-        facebook_user_name=credentials["facebook_user_name"],
-        facebook_user_email=credentials["facebook_user_email"],
-        access_token=credentials["access_token"],
-        pages_data=pages_data,
-        instagram_accounts_data=instagram_accounts_data,
-        created_at=credentials["created_at"],
-        updated_at=credentials["updated_at"],
-    )
+    return credentials
 
 
 @router.delete("/credentials", response_model=DisconnectResponse)
@@ -392,24 +368,15 @@ async def get_facebook_status(request: Request, database: Database = Depends(get
     if not credentials:
         return FacebookStatusResponse(connected=False)
 
-    # Parse JSON data and return in format expected by reference app
-    pages_data = (
-        json.loads(credentials["pages_data"]) if credentials["pages_data"] else []
-    )
-    instagram_accounts_data = (
-        json.loads(credentials["instagram_accounts_data"])
-        if credentials["instagram_accounts_data"]
-        else []
-    )
-
+    # Build facebook_data from the Pydantic model
     facebook_data = {
         "facebook_user": {
-            "id": credentials["facebook_user_id"],
-            "name": credentials["facebook_user_name"],
-            "email": credentials["facebook_user_email"],
+            "id": credentials.facebook_user_id,
+            "name": credentials.facebook_user_name,
+            "email": credentials.facebook_user_email,
         },
-        "pages": pages_data,
-        "instagram_accounts": instagram_accounts_data,
+        "pages": credentials.pages_data or [],
+        "instagram_accounts": credentials.instagram_accounts_data or [],
     }
 
     return FacebookStatusResponse(connected=True, facebook_data=facebook_data)
