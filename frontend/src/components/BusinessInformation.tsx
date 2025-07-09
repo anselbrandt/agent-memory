@@ -34,6 +34,7 @@ export default function BusinessInformation({
     url: "",
     description: "",
   });
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   useEffect(() => {
     if (authenticated) {
@@ -111,7 +112,14 @@ export default function BusinessInformation({
 
       const data = await response.json();
       setBusiness(data);
-      setIsEditing(false);
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setIsEditing(false);
+
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+        }, 3000);
+      }, 400);
     } catch (err) {
       console.error("Error saving business:", err);
       setError(
@@ -127,6 +135,7 @@ export default function BusinessInformation({
   const handleEdit = () => {
     setIsEditing(true);
     setError(null);
+    setShowSuccessMessage(false);
   };
 
   const handleCancel = () => {
@@ -290,6 +299,27 @@ export default function BusinessInformation({
         )}
       </div>
 
+      {showSuccessMessage && (
+        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 animate-pulse">
+          <div className="flex items-center text-sm text-green-700">
+            <svg
+              className="w-4 h-4 mr-2 text-green-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            Business information saved successfully!
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
           <div className="text-sm text-red-700">{error}</div>
@@ -302,76 +332,189 @@ export default function BusinessInformation({
         </div>
       )}
 
-      {!loading && (!business || isEditing) && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="business-name"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Business Name
-            </label>
-            <input
-              id="business-name"
-              type="text"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your business name"
-              required
-            />
-          </div>
+      <div
+        className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          (!business || isEditing) && !loading
+            ? "opacity-100 max-h-screen"
+            : "opacity-0 max-h-0"
+        }`}
+      >
+        {!loading && (!business || isEditing) && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label
+                htmlFor="business-name"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Business Name
+              </label>
+              <input
+                id="business-name"
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your business name"
+                required
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="business-url"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Business URL
-            </label>
-            <input
-              id="business-url"
-              type="url"
-              value={formData.url}
-              onChange={(e) =>
-                setFormData({ ...formData, url: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="https://yourwebsite.com"
-              required
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="business-url"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Business URL
+              </label>
+              <input
+                id="business-url"
+                type="url"
+                value={formData.url}
+                onChange={(e) =>
+                  setFormData({ ...formData, url: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://yourwebsite.com"
+                required
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="business-description"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Business Description
-            </label>
-            <textarea
-              id="business-description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Describe your business, what you do, your target market, and any other relevant information that would help AI agents understand your context."
-              required
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="business-description"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Business Description
+              </label>
+              <textarea
+                id="business-description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Describe your business, what you do, your target market, and any other relevant information that would help AI agents understand your context."
+                required
+              />
+            </div>
 
-          <div className="flex space-x-3">
-            <button
-              type="submit"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              disabled={loading}
-            >
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                ) : (
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                )}
+                Save Business Information
+              </button>
+
+              {business && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </div>
+      <div
+        className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          !loading && business && !isEditing
+            ? "opacity-100 max-h-screen"
+            : "opacity-0 max-h-0"
+        }`}
+      >
+        {!loading && business && !isEditing && (
+          <div className="space-y-4">
+            <div>
+              <span className="block text-sm font-medium text-gray-500 mb-1">
+                Business Name
+              </span>
+              <span className="text-sm text-gray-900">{business.name}</span>
+            </div>
+
+            <div>
+              <span className="block text-sm font-medium text-gray-500 mb-1">
+                Website
+              </span>
+              <a
+                href={business.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                {business.url}
+              </a>
+            </div>
+
+            <div>
+              <span className="block text-sm font-medium text-gray-500 mb-1">
+                Description
+              </span>
+              <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                {business.description}
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200">
+              <div className="flex items-center text-xs text-gray-500 space-x-4">
+                <span>
+                  Created:{" "}
+                  {new Date(business.created_at).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+                <span>
+                  Updated:{" "}
+                  {new Date(business.updated_at).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div
+        className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          !loading && !business && !isEditing
+            ? "opacity-100 max-h-screen"
+            : "opacity-0 max-h-0"
+        }`}
+      >
+        {!loading && !business && !isEditing && (
+          <div className="text-center py-8">
+            <div className="text-gray-500 mb-4">
               <svg
-                className="w-4 h-4 mr-2"
+                className="w-12 h-12 mx-auto mb-4 text-gray-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -380,105 +523,18 @@ export default function BusinessInformation({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 13l4 4L19 7"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                 />
               </svg>
-              Save Business Information
-            </button>
-
-            {business && (
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-      )}
-
-      {!loading && business && !isEditing && (
-        <div className="space-y-4">
-          <div>
-            <span className="block text-sm font-medium text-gray-500 mb-1">
-              Business Name
-            </span>
-            <span className="text-sm text-gray-900">{business.name}</span>
-          </div>
-
-          <div>
-            <span className="block text-sm font-medium text-gray-500 mb-1">
-              Website
-            </span>
-            <a
-              href={business.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              {business.url}
-            </a>
-          </div>
-
-          <div>
-            <span className="block text-sm font-medium text-gray-500 mb-1">
-              Description
-            </span>
-            <p className="text-sm text-gray-900 whitespace-pre-wrap">
-              {business.description}
-            </p>
-          </div>
-
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex items-center text-xs text-gray-500 space-x-4">
-              <span>
-                Created:{" "}
-                {new Date(business.created_at).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-              <span>
-                Updated:{" "}
-                {new Date(business.updated_at).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
+              <p className="text-sm">No business information saved.</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Add your business details to help AI agents provide more
+                relevant assistance.
+              </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {!loading && !business && !isEditing && (
-        <div className="text-center py-8">
-          <div className="text-gray-500 mb-4">
-            <svg
-              className="w-12 h-12 mx-auto mb-4 text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              />
-            </svg>
-            <p className="text-sm">No business information saved.</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Add your business details to help AI agents provide more relevant
-              assistance.
-            </p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
