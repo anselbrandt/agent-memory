@@ -6,9 +6,9 @@ import asyncpg
 import httpx
 
 from app.config import Settings
-from app.auth_models import GoogleUser, User, Provider
-from app.session_service import session_service
-from app.user_service import user_service
+from app.models.auth_models import GoogleUser, User, Provider
+from app.services.session_service import session_service
+from app.services.user_service import user_service
 
 settings = Settings()
 

@@ -59,7 +59,6 @@ class ChatUser(BaseModel):
         from_attributes = True
 
 
-# Additional models from db_models.py for API serialization
 class UserBase(BaseModel):
     """Base user model for shared fields."""
 

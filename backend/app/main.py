@@ -19,12 +19,12 @@ import logfire
 
 from app.config import Settings
 from app.db import Database, ChatUser
-from app.auth_routes import auth_router
-from app.auth_service import auth_service
-from app.models import BusinessBase, BusinessResponse
-from app.facebook_oauth_routes import router as facebook_router
-from app.upload_routes import router as upload_router
-from app.chat_routes import router as chat_router
+from app.routes.auth_routes import auth_router
+from app.services.auth_service import auth_service
+from app.models.models import BusinessBase, BusinessResponse
+from app.routes.facebook_oauth_routes import router as facebook_router
+from app.routes.upload_routes import router as upload_router
+from app.routes.chat_routes import router as chat_router
 
 settings = Settings()
 
@@ -78,7 +78,7 @@ def get_authenticated_user_id(request: Request) -> tuple[str, bool]:
         tuple: (user_id, is_authenticated) - user_id and whether they're actually authenticated
     """
     try:
-        from app.auth_service import auth_service
+        from app.services.auth_service import auth_service
 
         session_id = request.cookies.get("session_id")
         if session_id:
@@ -255,5 +255,5 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "pydantic_ai_examples.chat_app:app", reload=True, reload_dirs=[str(THIS_DIR)]
+        "app.main:app", reload=True, reload_dirs=[str(THIS_DIR)]
     )

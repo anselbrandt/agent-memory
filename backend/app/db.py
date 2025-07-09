@@ -16,9 +16,9 @@ from pydantic_ai.messages import (
     ModelMessagesTypeAdapter,
 )
 
-from app.models import ChatMessage, ChatUser, BusinessResponse, ConversationInfo
+from app.models.models import ChatMessage, ChatUser, BusinessResponse, ConversationInfo
 from app.config import Settings
-from app.facebook_models import FacebookCredentialsResponse
+from app.models.facebook_models import FacebookCredentialsResponse
 
 settings = Settings()
 

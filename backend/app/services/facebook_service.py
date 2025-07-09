@@ -1,6 +1,6 @@
 import httpx
 
-from app.facebook_models import (
+from app.models.facebook_models import (
     FacebookPagePostRequest,
     InstagramPostRequest,
     FacebookPostResponse,

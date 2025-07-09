@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, status, Request, Response, Depends
 from fastapi.responses import RedirectResponse
 
 from app.config import Settings
-from app.auth_models import AuthRequest, AuthResponse
-from app.auth_service import auth_service
+from app.models.auth_models import AuthRequest, AuthResponse
+from app.services.auth_service import auth_service
 from app.db import Database
 
 settings = Settings()

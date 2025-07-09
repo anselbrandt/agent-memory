@@ -4,7 +4,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.image_service import image_service
+from app.services.image_service import image_service
+from app.services.auth_service import auth_service
 
 
 class ImageUploadResponse(BaseModel):
@@ -25,8 +26,6 @@ def get_authenticated_user_id(request: Request) -> tuple[str, bool]:
         tuple: (user_id, is_authenticated) - user_id and whether they're actually authenticated
     """
     try:
-        from app.auth_service import auth_service
-
         session_id = request.cookies.get("session_id")
         if session_id:
             user_data = auth_service.get_session_user(session_id)

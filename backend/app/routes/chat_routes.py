@@ -19,10 +19,10 @@ from pydantic_ai.messages import (
 )
 from typing_extensions import TypedDict
 
-from app.agents import chat_agent, topic_agent, BusinessInfo, ChatDependencies
+from app.agents.agents import chat_agent, topic_agent, BusinessInfo, ChatDependencies
 from app.config import Settings
 from app.db import Database
-from app.models import ConversationInfo
+from app.models.models import ConversationInfo
 
 settings = Settings()
 
@@ -69,19 +69,27 @@ def to_chat_message(m: ModelMessage) -> Optional[BrowserMessage]:
     if isinstance(m, ModelRequest):
         for part in m.parts:
             if isinstance(part, UserPromptPart):
+                # Ensure content is a string
+                content = part.content
+                if isinstance(content, list):
+                    content = "".join(str(item) for item in content)
                 return {
                     "role": "user",
                     "timestamp": part.timestamp.isoformat(),
-                    "content": part.content,
+                    "content": str(content),
                 }
 
     elif isinstance(m, ModelResponse):
         for part in m.parts:
             if isinstance(part, TextPart):
+                # Ensure content is a string
+                content = part.content
+                if isinstance(content, list):
+                    content = "".join(str(item) for item in content)
                 return {
                     "role": "model",
                     "timestamp": m.timestamp.isoformat(),
-                    "content": part.content,
+                    "content": str(content),
                 }
 
     # Ignore system prompts, tool calls, etc.

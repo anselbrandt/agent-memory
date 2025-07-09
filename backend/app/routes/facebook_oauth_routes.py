@@ -4,11 +4,12 @@ import json
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 import httpx
 
 from app.config import Settings
 from app.db import Database
-from app.facebook_models import (
+from app.models.facebook_models import (
     FacebookUser,
     FacebookPage,
     InstagramBusinessAccount,
@@ -17,7 +18,7 @@ from app.facebook_models import (
     FacebookPagePostRequest,
     FacebookCredentialsResponse,
 )
-from pydantic import BaseModel, Field
+from app.services.auth_service import auth_service
 
 settings = Settings()
 
@@ -34,7 +35,6 @@ def get_authenticated_user_id(request: Request) -> tuple[str, bool]:
         tuple: (user_id, is_authenticated) - user_id and whether they're actually authenticated
     """
     try:
-        from app.auth_service import auth_service
 
         session_id = request.cookies.get("session_id")
         if session_id:

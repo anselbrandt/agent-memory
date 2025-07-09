@@ -6,7 +6,7 @@ import uuid
 from pydantic import ValidationError
 
 from app.db import get_redis
-from app.auth_models import SessionData
+from app.models.auth_models import SessionData
 from app.config import Settings
 
 settings = Settings()
