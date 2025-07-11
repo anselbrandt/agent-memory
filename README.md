@@ -9,7 +9,7 @@ docker compose up -d
 Shutdown and Delete Database Volumes
 
 ```
-docker compose -p agent-memory down --volumes --rmi all
+docker compose -p agent-memory down --volumes --remove-orphans
 ```
 
 ### Backend
